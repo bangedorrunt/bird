@@ -357,6 +357,9 @@ def pairs6(a: JField, b: JField, c: JField, d: JField, e: JField, f: JField) -> 
 def pairs7(a: JField, b: JField, c: JField, d: JField, e: JField, f: JField, g: JField) -> List<&2, JField>:
   a <> (b <> (c <> (d <> (e <> (f <> (g <> Nil{}))))))
 
+def pairs8(a: JField, b: JField, c: JField, d: JField, e: JField, f: JField, g: JField, h: JField) -> List<&2, JField>:
+  a <> (b <> (c <> (d <> (e <> (f <> (g <> (h <> Nil{})))))))
+
 def arr_of(xs: List<&2, Json>) -> Json:
   match xs:
     case Nil{}:
@@ -400,6 +403,9 @@ def obj6(a: JField, b: JField, c: JField, d: JField, e: JField, f: JField) -> Js
 
 def obj7(a: JField, b: JField, c: JField, d: JField, e: JField, f: JField, g: JField) -> Json:
   obj_of(pairs7(a, b, c, d, e, f, g))
+
+def obj8(a: JField, b: JField, c: JField, d: JField, e: JField, f: JField, g: JField, h: JField) -> Json:
+  obj_of(pairs8(a, b, c, d, e, f, g, h))
 
 # ── reading ─────────────────────────────────────────────────────────────
 

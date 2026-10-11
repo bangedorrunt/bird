@@ -262,6 +262,7 @@ type Verb is Data:
     count: U32,
   }
   VerbMentions{count: U32}
+  VerbBookmarks{count: U32}
   VerbWhoami{}
   VerbCheck{}
   # `login` reads the session cookies out of a browser profile and the rotating
@@ -292,6 +293,8 @@ def Verb.name(v: Verb) -> String:
       "search"
     case VerbMentions{count}:
       "mentions"
+    case VerbBookmarks{count}:
+      "bookmarks"
     case VerbWhoami{}:
       "whoami"
     case VerbCheck{}:
@@ -444,6 +447,7 @@ type RunCfg is Data:
     op_create_tweet: String,
     op_tweet_detail: String,
     op_search: String,
+    op_bookmarks: String,
     op_viewer: String,
     web_bearer: String,
     gql_features: String,
@@ -463,6 +467,7 @@ def mk_cfg(
   op_create_tweet: String,
   op_tweet_detail: String,
   op_search: String,
+  op_bookmarks: String,
   op_viewer: String,
   web_bearer: String,
   gql_features: String,
@@ -472,7 +477,7 @@ def mk_cfg(
   gql_base: String,
   mentions_url: String
 ) -> RunCfg:
-  RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}
+  RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}
 
 # ── what `login` needs ──────────────────────────────────────────────────
 #
@@ -624,8 +629,8 @@ type Msg is Data:
 # been read.
 def RunCfg.with_verb(cfg: RunCfg, verb: Verb) -> RunCfg:
   match cfg:
-    case RunCfg{verb_old, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
-      RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}
+    case RunCfg{verb_old, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}
 
 # ── the login flow ──────────────────────────────────────────────────────
 #
@@ -918,6 +923,8 @@ def Verb.set_count(+v: Verb, n: U32) -> Verb:
       VerbSearch{query, n}
     case VerbMentions{count_old}:
       VerbMentions{n}
+    case VerbBookmarks{count_old}:
+      VerbBookmarks{n}
     case _:
       v
 

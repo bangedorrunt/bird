@@ -122,6 +122,7 @@ def gql_cfg(verb: D.Verb, bearer: String) -> D.RunCfg:
     "opTW",
     "opDT",
     "opSE",
+    "opBM",
     "opVW",
     bearer,
     "{\"flag\":true}",
@@ -142,6 +143,7 @@ def sweet_cfg(verb: D.Verb) -> D.RunCfg:
     "opTW",
     "opDT",
     "opSE",
+    "opBM",
     "opVW",
     SNil{},
     "{}",
@@ -162,6 +164,7 @@ def anonymous(verb: D.Verb) -> D.RunCfg:
     "opTW",
     "opDT",
     "opSE",
+    "opBM",
     "opVW",
     SNil{},
     "{}",
@@ -172,8 +175,35 @@ def anonymous(verb: D.Verb) -> D.RunCfg:
     "https://x.com/i/api/2/notifications/mentions.json"
   )
 
+# The same session, with the feature blob spelled out: `gql_cfg` above always
+# carries one of its own, so the default `{}` a real run starts from needs its
+# own builder.
+def gql_cfg_features(verb: D.Verb, bearer: String, features: String) -> D.RunCfg:
+  D.mk_cfg(
+    verb,
+    D.OutAgent{},
+    False{},
+    D.EngineGraphql{},
+    D.mk_session("tok-a", "tok-c", "test"),
+    "opTW",
+    "opDT",
+    "opSE",
+    "opBM",
+    "opVW",
+    bearer,
+    features,
+    "https://sweet.test",
+    15000,
+    "https://upload.test",
+    "https://x.com/i/api/graphql",
+    "https://x.com/i/api/2/notifications/mentions.json"
+  )
+
 def gql_req(verb: D.Verb, bearer: String) -> D.HttpReq:
   req_of(cmd_of(A.Api.plan(gql_cfg(verb, bearer), 7)))
+
+def gql_req_default_features(verb: D.Verb, bearer: String) -> D.HttpReq:
+  req_of(cmd_of(A.Api.plan(gql_cfg_features(verb, bearer, "{}"), 7)))
 
 def sweet_req(verb: D.Verb) -> D.HttpReq:
   req_of(cmd_of(A.Api.plan(sweet_cfg(verb), 7)))
@@ -311,6 +341,37 @@ def main() -> IO(Unit):
       body_of(gql_req(D.VerbRead{"https://x.com/u/status/999888"}, "b")),
       "\"focalTweetId\":\"999888\""
     ))
+    # An article's body arrives only when the request carries the web client's
+    # field toggles, so the detail reads send them and nothing else does.
+    ok("a read asks for the article body, not just its stub", String.contains(
+      body_of(gql_req(D.VerbRead{"12345"}, "b")),
+      "\"fieldToggles\":{\"withArticleRichContentState\":true"
+    ))
+    ok("a tweet's body carries no field toggles", Bool.not(String.contains(
+      body_of(gql_req(tweet("hi"), "bearer-1")),
+      "fieldToggles"
+    )))
+    # The toggles are half of it: without the article flags X answers with the
+    # t.co stub, which is what a run that left `--gql-features` at its default
+    # got on 2026-10-11 until this stood in.
+    ok("...and the article's feature flags beside them", String.contains(
+      body_of(gql_req_default_features(D.VerbRead{"12345"}, "b")),
+      "\"articles_preview_enabled\":true"
+    ))
+    ok("...so a bare read asks for the body, not the stub", String.contains(
+      body_of(gql_req_default_features(D.VerbRead{"12345"}, "b")),
+      "\"longform_notetweets_consumption_enabled\":true"
+    ))
+    # A blob the operator pasted is X's own and already carries them, so it goes
+    # out untouched rather than being merged with these.
+    ok("a pasted feature blob is not replaced by the article flags", Bool.not(String.contains(
+      body_of(gql_req(D.VerbRead{"12345"}, "b")),
+      "articles_preview_enabled"
+    )))
+    ok("...and a tweet is not given them at all", Bool.not(String.contains(
+      body_of(gql_req_default_features(tweet("hi"), "b")),
+      "articles_preview_enabled"
+    )))
 
     ok("a search posts to SearchTimeline with its query", String.contains(
       body_of(gql_req(D.VerbSearch{"rust", 25}, "b")),
@@ -319,6 +380,20 @@ def main() -> IO(Unit):
     ok("a search carries its count", String.contains(
       body_of(gql_req(D.VerbSearch{"rust", 25}, "b")),
       "\"count\":25"
+    ))
+
+    # Bookmarks: the web timeline's own variables, at the configured operation.
+    ok("bookmarks posts to Bookmarks with the configured query id", String.eq(
+      url_of(gql_req(D.VerbBookmarks{25}, "b")),
+      "https://x.com/i/api/graphql/opBM/Bookmarks"
+    ))
+    ok("bookmarks carries its count", String.contains(
+      body_of(gql_req(D.VerbBookmarks{25}, "b")),
+      "\"count\":25"
+    ))
+    ok("bookmarks carries the web client's launch context", String.contains(
+      body_of(gql_req(D.VerbBookmarks{25}, "b")),
+      "\"requestContext\":\"launch\""
     ))
 
     # Sweetistics: the same operation names, at the base url, signed with the key.

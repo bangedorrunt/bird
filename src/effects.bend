@@ -401,6 +401,7 @@ def Effects.specs() -> List<&2, EnvSpec>:
                               EnvSpec{"BIRD_OP_CREATE_TWEET", "--op-create-tweet"} <> (
                                 EnvSpec{"BIRD_OP_TWEET_DETAIL", "--op-tweet-detail"} <> (
                                   EnvSpec{"BIRD_OP_SEARCH", "--op-search"} <> (
+                                    EnvSpec{"BIRD_OP_BOOKMARKS", "--op-bookmarks"} <> (
                                     EnvSpec{"BIRD_OP_VIEWER", "--op-viewer"} <> (
                                       EnvSpec{"BIRD_MEDIA_UPLOAD_BASE", "--media-upload-base"} <> (
                                         EnvSpec{"BIRD_GQL_BASE", "--gql-base"} <> (
@@ -408,6 +409,7 @@ def Effects.specs() -> List<&2, EnvSpec>:
                                             EnvSpec{"BIRD_BUNDLE_BASE", "--bundle-base"} <> (
                                               EnvSpec{"HOME", "--home"} <> (
                                                 EnvSpec{"TMPDIR", "--tmpdir"} <> Nil{}
+                                              )
                                               )
                                             )
                                           )

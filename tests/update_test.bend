@@ -489,7 +489,8 @@ def bundle_js() -> String:
   "e.exports={queryId:\"TpQxQtWMTMnIAMPlMGMqNw\",operationName:\"Viewer\",operationType:\"query\"}"
   ++ ",{queryId:\"3BlMtudy4N-d78ch7zTLZQ\",operationName:\"TweetDetail\",operationType:\"query\"}"
   ++ ",{queryId:\"irezafrnzav4Ulf1vDkEBg\",operationName:\"SearchTimeline\",operationType:\"query\"}"
-  ++ ",{queryId:\"wR5Z_libLvkew3tF9w-Sg\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
+  ++ ",{queryId:\"uzboyXSHSJrR-mGJqep0TQ\",operationName:\"Bookmarks\",operationType:\"query\"}"
+  ++ ",{queryId:\"wR5Z_lEibLvkew3tF9w-Sg\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
   ++ ",Bearer " ++ bundle_bearer() ++ "\","
 
 def bundle_js_short() -> String:
@@ -783,7 +784,8 @@ def main() -> IO(Unit):
     ok("...and the viewer id", String.contains(cmd_write_text(first_cmd(l8)), "TpQxQtWMTMnIAMPlMGMqNw"))
     ok("...and the detail id", String.contains(cmd_write_text(first_cmd(l8)), "3BlMtudy4N-d78ch7zTLZQ"))
     ok("...and the search id", String.contains(cmd_write_text(first_cmd(l8)), "irezafrnzav4Ulf1vDkEBg"))
-    ok("...and the create id", String.contains(cmd_write_text(first_cmd(l8)), "wR5Z_libLvkew3tF9w-Sg"))
+    ok("...and the bookmarks id", String.contains(cmd_write_text(first_cmd(l8)), "uzboyXSHSJrR-mGJqep0TQ"))
+    ok("...and the create id", String.contains(cmd_write_text(first_cmd(l8)), "wR5Z_lEibLvkew3tF9w-Sg"))
     ok("...and the session the browser gave", String.contains(cmd_write_text(first_cmd(l8)), "first-token"))
 
     +l9 : D.Step = wrote_turn(5, cache_path(), True{}, SNil{}, model_of(l8))

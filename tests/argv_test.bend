@@ -68,22 +68,22 @@ def resolve_of(+items: List<&2, D.Item>, tty: Bool, config: String) -> D.RunCfg:
 
 def verb_of(+c: D.RunCfg) -> D.Verb:
   match c:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       verb
 
 def out_of(+c: D.RunCfg) -> D.OutMode:
   match c:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       out
 
 def engine_of(+c: D.RunCfg) -> D.Engine:
   match c:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       engine
 
 def timeout_of(+c: D.RunCfg) -> U32:
   match c:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       timeout_ms
 
 # ── the verb a parse produced ───────────────────────────────────────────
@@ -108,6 +108,8 @@ def count_of(+v: D.Verb) -> U32:
     case D.VerbSearch{query, count}:
       count
     case D.VerbMentions{count}:
+      count
+    case D.VerbBookmarks{count}:
       count
     case _:
       0
@@ -204,12 +206,12 @@ def timeout_of_args(+p: A.Argv) -> U32:
 
 def bearer_of(+c: D.RunCfg) -> String:
   match c:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       web_bearer
 
 def features_of(+c: D.RunCfg) -> String:
   match c:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       gql_features
 
 def bearer_of_args(+p: A.Argv) -> String:
@@ -347,6 +349,7 @@ def main() -> IO(Unit):
     ok("no verb at all means help", String.eq(verb_name_of(A.Argv.parse(Nil{}), False{}), "help"))
     ok("check runs the check verb", String.eq(verb_name_of(A.Argv.parse("check" <> Nil{}), False{}), "check"))
     ok("mentions is a verb", String.eq(verb_name_of(A.Argv.parse("mentions" <> Nil{}), False{}), "mentions"))
+    ok("bookmarks is a verb", String.eq(verb_name_of(A.Argv.parse("bookmarks" <> Nil{}), False{}), "bookmarks"))
 
     # Flags may come before or after the verb.
     ok("a setting may precede the verb", String.eq(verb_name_of(A.Argv.parse("--engine" <> ("sweetistics" <> ("whoami" <> Nil{}))), False{}), "whoami"))
@@ -359,6 +362,8 @@ def main() -> IO(Unit):
     # Settings land where the policy reads them.
     ok("--count reaches the search verb", U32.is_eq(count_of_args(A.Argv.parse("search" <> ("rust" <> ("--count" <> ("25" <> Nil{}))))), 25))
     ok("--count works before the verb too", U32.is_eq(count_of_args(A.Argv.parse("--count" <> ("7" <> ("mentions" <> Nil{})))), 7))
+    ok("--count reaches the bookmarks verb", U32.is_eq(count_of_args(A.Argv.parse("bookmarks" <> ("--count" <> ("25" <> Nil{})))), 25))
+    ok("a bookmarks with no --count uses the default", U32.is_eq(count_of_args(A.Argv.parse("bookmarks" <> Nil{})), P.Cfg.default_count()))
     ok("a search with no --count uses the default", U32.is_eq(count_of_args(A.Argv.parse("search" <> ("rust" <> Nil{}))), P.Cfg.default_count()))
     ok("--engine selects the engine", String.eq(engine_name_of(A.Argv.parse("--engine" <> ("sweetistics" <> ("whoami" <> Nil{})))), "sweetistics"))
     ok("no --engine leaves the default alone", String.eq(engine_name_of(A.Argv.parse("whoami" <> Nil{})), "graphql"))

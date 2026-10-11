@@ -27,7 +27,7 @@ bird whoami \
 | `--auth-token` | The `auth_token` cookie. It names the account. |
 | `--ct0` | The `ct0` cookie. It is also sent as `x-csrf-token`, which X requires on a write. |
 | `--web-bearer` | The client bearer. It identifies the client, not you. |
-| `--gql-features` | X's feature-flag blob, spliced into the request as raw JSON. Default `{}`. |
+| `--gql-features` | X's feature-flag blob, spliced into the request as raw JSON. Default `{}`, except on `read`, `replies` and `thread`: those carry the article feature flags instead, because X answers an article with its `t.co` stub without them. |
 | `--op-viewer`, `--op-tweet-detail`, `--op-search`, `--op-create-tweet` | One query id per operation. They rotate on X's side. |
 
 The last two matter on a bad day: the operation ids and the feature blob are not

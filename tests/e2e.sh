@@ -32,7 +32,7 @@ for v in TWITTER_AUTH_TOKEN TWITTER_CT0 BIRD_JSON BIRD_AUTH_TOKEN BIRD_CT0 BIRD_
          BIRD_COUNT BIRD_TIMEOUT_MS BIRD_FIXTURE BIRD_TEXT_FILE \
          BIRD_SWEETISTICS_API_KEY BIRD_SWEETISTICS_BASE_URL BIRD_WEB_BEARER \
          BIRD_GQL_FEATURES BIRD_OP_CREATE_TWEET BIRD_OP_TWEET_DETAIL BIRD_OP_SEARCH \
-         BIRD_OP_VIEWER BIRD_MEDIA_UPLOAD_BASE BIRD_GQL_BASE BIRD_MENTIONS_URL \
+         BIRD_OP_BOOKMARKS BIRD_OP_VIEWER BIRD_MEDIA_UPLOAD_BASE BIRD_GQL_BASE BIRD_MENTIONS_URL \
          BIRD_CONFIG; do
   unset "$v"
 done
@@ -81,6 +81,9 @@ printf 'PNGDATA' > "$WORK/shot.png"
 : > "$WORK/fifth.png"
 : > "$WORK/clip.mp4"
 printf 'plain text' > "$WORK/notes.txt"
+# The bookmarks timeline is a GraphQL timeline like `read`'s, under its own key,
+# so a fixture of its own is what shows the fold does not care which key it was.
+printf '%s' '{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":[{"content":{"itemContent":{"tweet_results":{"result":{"rest_id":"6060","legacy":{"full_text":"a saved tweet","id_str":"6060"}}}}}}]}]}}}}' > "$WORK/bookmarks.json"
 printf 'not json at all' > "$WORK/broken-cache.json"
 
 CREDS="--auth-token T --ct0 C --web-bearer BEARER --gql-features {}"
@@ -259,6 +262,10 @@ case_ok "schema names the default graphql host" 0 '"gql_base":"https://x.com/i/a
 case_ok "schema names the default mentions url" 0 '"mentions_url":"https://x.com/i/api/2/notifications/mentions.json"' -- schema --json
 case_ok "schema names the default media host" 0 '"media_upload_base":"https://upload.twitter.com/1.1/media"' -- schema --json
 case_ok "schema names the default operation ids" 0 '"op_viewer":"Viewer"' -- schema --json
+# The bookmarks operation is the one X's bundle no longer carries, so its default
+# is a recorded query id rather than the operation's name; an agent reading the
+# schema has to be able to learn which one a run will send.
+case_ok "schema names the recorded bookmarks operation" 0 '"op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw"' -- schema --json
 
 # ── refusals, which are the whole contract with an agent ────────────────────
 case_ok "an unknown flag is refused by name" 2 'unknown flag --nope' -- search rust --nope --json
@@ -330,6 +337,15 @@ case_ok "mentions asks X with the count it was given" 0 'mentions.json?count=3' 
 case_ok "...as a GET" 0 '"GET"' -- mentions $CREDS --dry-run --json
 case_ok "mentions without a session is refused" 3 '"id":"auth"' -- mentions --sweetistics-api-key k --json
 
+# bookmarks is a read of the web timeline: the operation id is a setting, and the
+# count rides in the variables beside the launch context.
+case_ok "bookmarks asks the operation its setting names" 0 '/opBM/Bookmarks' -- bookmarks --op-bookmarks opBM $CREDS --dry-run --json
+case_ok "...and the recorded one when nothing sets one" 0 '/XD0ViOeSOW4YoeNTGjVaYw/Bookmarks' -- bookmarks $CREDS --dry-run --json
+case_ok "...with the count it was given" 0 '\"count\":3' -- bookmarks --count 3 $CREDS --dry-run --json
+# The fold cannot tell one GraphQL timeline from another, which is the point:
+# a bookmarks answer comes out as tweets like every other read.
+case_ok "a bookmarks timeline folds to its tweets" 0 '"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet"' -- bookmarks --fixture "$WORK/bookmarks.json" --json
+
 # ── login: what it refuses before it runs anything ─────────────────────────
 # `login` is the one verb that runs local programs, so its refusals are the whole
 # contract with a caller: a run that cannot work has to say so before it starts
@@ -384,6 +400,7 @@ else
     case_ok "a real 404 is not_found, carrying its own status" 4 '"status":404' -- read 12345 $LIVE --op-tweet-detail /detail --json
     case_ok "a real 429 keeps the exact body, nothing glued to it" 5 '"body":"Rate limit exceeded"' -- search rust $LIVE --op-search /search --json
     case_ok "a real 500 is upstream" 7 '"id":"upstream"' -- tweet hi $LIVE --op-create-tweet /tweet --json
+    case_ok "bookmarks folds the timeline its operation names" 0 'a saved tweet' -- bookmarks $LIVE --op-bookmarks /bookmarks --json
     case_ok "a failure with no request behind it reports no status" 2 '"status":0' -- tweet --json
     # 300 KB in, one envelope out. The status is split off the end of whatever curl
     # wrote, and the obvious way to do that costs a stack frame per character, which
@@ -399,11 +416,16 @@ import json, sys
 rows = [json.loads(line) for line in open(sys.argv[1])]
 detail = [r for r in rows if r["path"] == "/detail"]
 search = [r for r in rows if r["path"] == "/search"]
+bookmarks = [r for r in rows if r["path"] == "/bookmarks"]
 ok = (len(detail) == 1
       and detail[0]["method"] == "POST"
       and detail[0]["body"] == '{"focalTweetId":"12345"}'
       and len(search) == 1
-      and '"count":10' in search[0]["body"])
+      and '"count":10' in search[0]["body"]
+      and len(bookmarks) == 1
+      and bookmarks[0]["method"] == "POST"
+      and '"count":10' in bookmarks[0]["body"]
+      and '"requestContext":"launch"' in bookmarks[0]["body"])
 print("requests:", [(r["method"], r["path"], r["body"]) for r in rows])
 sys.exit(0 if ok else 1)
 PY
@@ -474,6 +496,37 @@ PY
       fail=$((fail + 1))
       cat "$WORK/wiremedia" >> "$OUT"
       printf 'FAIL %d. the server received the upload, the alt and the post, in that order\n' "$n" | tee -a "$OUT"
+    fi
+
+    # ── an article read, against the stand-in ───────────────────────────────
+    #
+    # X gates an article's body on feature flags, and the flags a run sends are
+    # decided in the request builder rather than by the caller. So the read goes
+    # out over a real socket and the body the server received is what is checked:
+    # the flags a stub-only run used to send, and the field toggles beside them.
+    case_ok "an article answers with the article, not its t.co stub" 0 '"article_title":"a live article"' -- read 12345 $LIVE_POST --op-tweet-detail detail --json
+    n=$((n + 1))
+    printf '\n## %d. a read asked for the article body on the wire\n' "$n" >> "$OUT"
+    if python3 - "$WORK/live.log" > "$WORK/wirearticle" 2>&1 <<'PY'
+import json, sys
+rows = [json.loads(line) for line in open(sys.argv[1])]
+art = [r for r in rows if r["path"] == "/graphql/detail/TweetDetail"]
+ok = (len(art) == 1
+      and art[0]["method"] == "POST"
+      and '"articles_preview_enabled":true' in art[0]["body"]
+      and '"longform_notetweets_consumption_enabled":true' in art[0]["body"]
+      and '"fieldToggles":{"withArticleRichContentState":true' in art[0]["body"])
+print("article:", [(r["method"], r["path"], r["body"]) for r in art])
+sys.exit(0 if ok else 1)
+PY
+    then
+      pass=$((pass + 1))
+      cat "$WORK/wirearticle" >> "$OUT"
+      printf 'ok   %d. a read asked for the article body on the wire\n' "$n" | tee -a "$OUT"
+    else
+      fail=$((fail + 1))
+      cat "$WORK/wirearticle" >> "$OUT"
+      printf 'FAIL %d. a read asked for the article body on the wire\n' "$n" | tee -a "$OUT"
     fi
 
     # An attachment that is not there is the caller's mistake, and curl reports it
@@ -548,6 +601,11 @@ PY
         # The output must name the verb that ran: a login that reports `help` is
         # the run's manifest pointing at the wrong operation.
         case_ok "...and reports the verb it ran" 0 '"verb":"login"' -- login $LOGIN --json
+        # The bundle in this stand-in carries a Bookmarks record, so the login
+        # writes it into the cache like the other four. Against X's own bundle
+        # there is no such record and the setting is left out instead, which is
+        # what `bird schema`'s recorded default is for.
+        case_ok "...and writes the bookmarks operation the bundle carried" 0 '"op_bookmarks":"LIVEBOOKMARKS5"' -- login $LOGIN --json
         case_ok_not "login does not print the cookies it imported" 0 'SESSION-TOKEN' -- login $LOGIN --json
         # The same run with no `--settings-path`, which lands on the default and is
         # the only case that exercises making the directory it lives in.

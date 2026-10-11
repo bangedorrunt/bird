@@ -11,8 +11,10 @@ import ../src/domain.bend as D
 #
 #   bend tests/bundle_test.bend
 #
-# The documents are shaped like the live ones, recorded on 2026-10-11 from
-# https://abs.twimg.com/responsive-web/client-web/main.<hash>.js. The block that
+# The documents are shaped like the live ones. The bundle ids were recorded on
+# 2026-10-11 from https://abs.twimg.com/responsive-web/client-web/main.<hash>.js,
+# except the Bookmarks id, which comes from twitter-cli's recorded fallback
+# table. The block that
 # matters most is the cache one: the settings the cache writes are read back
 # through `Cfg.resolve`, so a cache the resolver cannot read is a failing test
 # rather than a run that silently has no bearer.
@@ -42,7 +44,18 @@ def js() -> String:
   "e.exports={queryId:\"TpQxQtWMTMnIAMPlMGMqNw\",operationName:\"Viewer\",operationType:\"query\"}"
   ++ ",{queryId:\"3BlMtudy4N-d78ch7zTLZQ\",operationName:\"TweetDetail\",operationType:\"query\"}"
   ++ ",{queryId:\"irezafrnzav4Ulf1vDkEBg\",operationName:\"SearchTimeline\",operationType:\"query\"}"
-  ++ ",{queryId:\"wR5Z_libLvkew3tF9w-Sg\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
+  ++ ",{queryId:\"uzboyXSHSJrR-mGJqep0TQ\",operationName:\"Bookmarks\",operationType:\"query\"}"
+  ++ ",{queryId:\"wR5Z_lEibLvkew3tF9w-Sg\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
+  ++ ",Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA\","
+
+# The bundle X served on 2026-10-11: four operations and no `Bookmarks` record
+# at all, which is why that one is left optional -- a login that refused on it
+# would refuse every login. The other four are the ones a bundle must carry.
+def js_four() -> String:
+  "e.exports={queryId:\"TpQxQtWMTMnIAMPlMGMqNw\",operationName:\"Viewer\",operationType:\"query\"}"
+  ++ ",{queryId:\"3BlMtudy4N-d78ch7zTLZQ\",operationName:\"TweetDetail\",operationType:\"query\"}"
+  ++ ",{queryId:\"irezafrnzav4Ulf1vDkEBg\",operationName:\"SearchTimeline\",operationType:\"query\"}"
+  ++ ",{queryId:\"wR5Z_lEibLvkew3tF9w-Sg\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
   ++ ",Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA\","
 
 # A bundle that is complete but for the operation ids, so the refusal can be
@@ -58,39 +71,49 @@ def j(xs: List<&2, String>) -> String:
 
 def viewer_of(+f: B.Found) -> String:
   match f:
-    case B.Found{bearer, viewer, detail, search, create}:
+    case B.Found{bearer, viewer, detail, search, bookmarks, create}:
       viewer
 
 def detail_of(+f: B.Found) -> String:
   match f:
-    case B.Found{bearer, viewer, detail, search, create}:
+    case B.Found{bearer, viewer, detail, search, bookmarks, create}:
       detail
 
 def search_of(+f: B.Found) -> String:
   match f:
-    case B.Found{bearer, viewer, detail, search, create}:
+    case B.Found{bearer, viewer, detail, search, bookmarks, create}:
       search
+
+def bookmarks_of(+f: B.Found) -> String:
+  match f:
+    case B.Found{bearer, viewer, detail, search, bookmarks, create}:
+      bookmarks
 
 def create_of(+f: B.Found) -> String:
   match f:
-    case B.Found{bearer, viewer, detail, search, create}:
+    case B.Found{bearer, viewer, detail, search, bookmarks, create}:
       create
 
 # ── reading a resolved run ──────────────────────────────────────────────
 
 def bearer_in(+cfg: D.RunCfg) -> String:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       web_bearer
 
 def detail_in(+cfg: D.RunCfg) -> String:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       op_tweet_detail
+
+def op_bookmarks_in(+cfg: D.RunCfg) -> String:
+  match cfg:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      op_bookmarks
 
 def creds_in(+cfg: D.RunCfg) -> D.Creds:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       creds
 
 # A match may not scrutinise a computed value, so the credential is read by a def
@@ -140,13 +163,20 @@ def check_bundle(+f: B.Found) -> IO(Unit):
     ok("the viewer id is read", String.eq(viewer_of(f), "TpQxQtWMTMnIAMPlMGMqNw"))
     ok("the detail id is read", String.eq(detail_of(f), "3BlMtudy4N-d78ch7zTLZQ"))
     ok("the search id is read", String.eq(search_of(f), "irezafrnzav4Ulf1vDkEBg"))
-    ok("the create id is read", String.eq(create_of(f), "wR5Z_libLvkew3tF9w-Sg"))
+    ok("the bookmarks id is read", String.eq(bookmarks_of(f), "uzboyXSHSJrR-mGJqep0TQ"))
+    ok("the create id is read", String.eq(create_of(f), "wR5Z_lEibLvkew3tF9w-Sg"))
     ok("a complete bundle is missing nothing", String.eq(B.Bundle.missing(f), ""))
 
 def check_missing() -> IO(Unit):
   do IO<Unit>:
     ok("a bundle with holes names the first one", String.eq(B.Bundle.missing(B.Bundle.found(js_short())), "--op-tweet-detail"))
     ok("a bundle with no bearer names that", String.eq(B.Bundle.missing(B.Bundle.found("{}{}")), "--web-bearer"))
+    ok("a bundle without the bookmarks operation is still complete",
+       String.eq(B.Bundle.missing(B.Bundle.found(js_four())), ""))
+    ok("...and it writes no bookmarks setting into the cache", Bool.not(String.contains(
+      B.Bundle.cache_text(B.Bundle.found(js_four()), "AT-VALUE", "CT0-VALUE"),
+      "--op-bookmarks"
+    )))
 
 def json_of(p: J.Parsed) -> J.Json:
   match p:
@@ -168,6 +198,7 @@ def check_cache(+f: B.Found) -> IO(Unit):
     +cfg : D.RunCfg = P.Cfg.resolve(Nil{}, Nil{}, rc, False{}, SNil{})
     ok("the cached bearer reaches the config", String.eq(bearer_in(cfg), bearer()))
     ok("the cached detail id reaches the config", String.eq(detail_in(cfg), "3BlMtudy4N-d78ch7zTLZQ"))
+    ok("the cached bookmarks id reaches the config", String.eq(op_bookmarks_in(cfg), "uzboyXSHSJrR-mGJqep0TQ"))
     ok("the cached cookies make a session", is_session(cfg))
     ok("the cached auth token is the one written", String.eq(at_in(cfg), "AT-VALUE"))
     +rc2 : List<&2, D.Item> = cache_items(f)

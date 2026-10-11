@@ -174,6 +174,106 @@ def Tweets.long_form(+t: J.Json) -> String:
 def Tweets.short_form(+t: J.Json) -> String:
   J.text(Tweets.field(t, "full_text"))
 
+# ── the article ─────────────────────────────────────────────────────────
+#
+# A post that is an X Article carries its whole body under
+# `article.article_results.result`: a title and draft.js `content_state.blocks`.
+# An article is a note at a different size -- `legacy.full_text` is the stub that
+# links to it -- so the body wins the same way a note does, and it is folded the
+# way twitter-cli reads it: headings, lists and quotes keep their markers so an
+# agent gets the shape of the piece as well as the words.
+
+def Tweets.article_node(+t: J.Json) -> J.Json:
+  Tweets.dig3(t, "article", "article_results", "result")
+
+def Tweets.article_title_of(+t: J.Json) -> String:
+  J.text(J.get_or_null(Tweets.article_node(t), "title"))
+
+def Tweets.article_blocks_of(+t: J.Json) -> List<&2, J.Json>:
+  J.items(Tweets.dig1(Tweets.dig4(t, "article", "article_results", "result", "content_state"), "blocks"))
+
+# The marker a block's text goes under. `atomic` is an embedded medium rather
+# than prose and is dropped, which is what twitter-cli does with it too.
+def Tweets.block_label(+kind: String) -> String:
+  match kind:
+    case "header-one":
+      "# "
+    case "header-two":
+      "## "
+    case "header-three":
+      "### "
+    case "blockquote":
+      "> "
+    case "unordered-list-item":
+      "- "
+    case _:
+      SNil{}
+
+# What one block contributes, worked out before the walk looks at it again: a
+# line to keep and the count to carry on with, or the count alone when the block
+# holds nothing. A record rather than a pair of matches inside the walk, because
+# a `match` may only scrutinise a parameter and the decision is made from the
+# block's own fields -- and because Bend has no mutual recursion, so the walk
+# cannot call a def that calls the walk back.
+type ArticleStep is Data:
+  ArticleSkip{n: U32}
+  ArticleLine{line: String, n: U32}
+
+# The running number is part of the fold, not of a block: an ordered item is
+# numbered by its place in its own list, and any other block that holds text
+# resets the count, so two lists in one article number separately.
+def Tweets.numbered_step(blank: Bool, +text: String, +n: U32) -> ArticleStep:
+  match blank:
+    case True{}:
+      ArticleSkip{n}
+    case False{}:
+      ArticleLine{U32.show(U32.add(n, 1)) ++ ". " ++ text, U32.add(n, 1)}
+
+def Tweets.plain_step(blank: Bool, +kind: String, +text: String, +n: U32) -> ArticleStep:
+  match blank:
+    case True{}:
+      ArticleSkip{n}
+    case False{}:
+      ArticleLine{Tweets.block_label(kind) ++ text, 0}
+
+# A block with no text does not reset the count, which is twitter-cli's order:
+# the empty ones are skipped before it reaches the reset.
+def Tweets.step_of(+kind: String, +text: String, +n: U32) -> ArticleStep:
+  match kind:
+    case "atomic":
+      ArticleSkip{n}
+    case "ordered-list-item":
+      Tweets.numbered_step(String.is_empty(text), text, n)
+    case _:
+      Tweets.plain_step(String.is_empty(text), kind, text, n)
+
+def Tweets.step_line(+s: ArticleStep, +acc: List<&2, String>) -> List<&2, String>:
+  match s:
+    case ArticleSkip{n}:
+      acc
+    case ArticleLine{line, n}:
+      line <> acc
+
+def Tweets.step_count(+s: ArticleStep) -> U32:
+  match s:
+    case ArticleSkip{n}:
+      n
+    case ArticleLine{line, n}:
+      n
+
+def Tweets.article_walk(+xs: List<&2, J.Json>, n: U32, +acc: List<&2, String>) -> List<&2, String>:
+  match xs:
+    case Nil{}:
+      List.reverse(&2, String, acc)
+    case +b <> rest:
+      +s : ArticleStep = Tweets.step_of(J.text(J.get_or_null(b, "type")), J.text(J.get_or_null(b, "text")), n)
+      Tweets.article_walk(rest, Tweets.step_count(s), Tweets.step_line(s, acc))
+
+# One blank line between blocks is what makes the folded body text rather than a
+# wall; `\n\n` is also what twitter-cli joins its blocks with.
+def Tweets.article_body_of(+t: J.Json) -> String:
+  String.join(Tweets.article_walk(Tweets.article_blocks_of(t), 0, Nil{}), "\n\n")
+
 def Tweets.text_body(+long: Bool, +full: String, +short: String) -> String:
   match long:
     case True{}:
@@ -181,9 +281,17 @@ def Tweets.text_body(+long: Bool, +full: String, +short: String) -> String:
     case False{}:
       short
 
+# The note wins over the article and the article over the stub, in that order:
+# a post is only one of the two, and `legacy.full_text` is a truncated line
+# either way.
 def Tweets.text_of(+t: J.Json) -> String:
   +long : String = Tweets.long_form(t)
-  Tweets.text_body(Bool.not(String.is_empty(long)), long, Tweets.short_form(t))
+  +article : String = Tweets.article_body_of(t)
+  Tweets.text_body(
+    Bool.not(String.is_empty(long)),
+    long,
+    Tweets.text_body(Bool.not(String.is_empty(article)), article, Tweets.short_form(t))
+  )
 
 # ── the author ──────────────────────────────────────────────────────────
 #
@@ -388,7 +496,9 @@ def Tweets.quoted(+t: J.Json, +root: J.Json) -> J.Json:
 
 def Tweets.extra_fields(+t: J.Json, +root: J.Json) -> List<&2, J.JField>:
   J.pair("quoted", Tweets.quoted(t, root)) <> (
-    J.pair("in_reply_to", Tweets.field_text(t, "in_reply_to_status_id_str")) <> Nil{}
+    J.pair("in_reply_to", Tweets.field_text(t, "in_reply_to_status_id_str")) <> (
+      J.pair("article_title", Tweets.text_json(Bool.not(String.is_empty(Tweets.article_title_of(t))), Tweets.article_title_of(t))) <> Nil{}
+    )
   )
 
 def Tweets.one(+t: J.Json, +root: J.Json) -> J.Json:

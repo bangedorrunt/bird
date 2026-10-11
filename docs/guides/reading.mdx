@@ -1,12 +1,12 @@
 ---
 title: Reading
-description: Read one tweet, its replies or a whole thread, and search recent tweets, with the id taken from a url when that is easier.
+description: Read one tweet, its replies or a whole thread, search recent tweets, and read your own bookmarks, with the id taken from a url when that is easier.
 ---
 
 # Reading
 
-Four verbs read, and none of them needs `--web-bearer` alone: X's GraphQL API
-wants the session, and the API-key backend takes reads as well.
+Every verb here reads, and none of them works from `--web-bearer` alone: X's
+GraphQL API wants the session, and the API-key backend takes reads as well.
 
 | verb | what it fetches |
 | --- | --- |
@@ -14,6 +14,7 @@ wants the session, and the API-key backend takes reads as well.
 | `replies <tweet-id\|url>` | The replies to it. |
 | `thread <tweet-id\|url>` | The whole self-thread. |
 | `search <query> [--count <n>]` | Recent tweets matching the query. |
+| `bookmarks [--count <n>]` | The signed-in account's saved bookmarks. |
 | `whoami` | The signed-in account. |
 | `check` | What the settings resolved to. Sends nothing. |
 
@@ -62,7 +63,7 @@ spend a round trip to learn what is knowable locally.
 
 ## Count
 
-`--count` applies to `search` and `mentions` and is clamped to **1..50** (the
+`--count` applies to `search`, `mentions` and `bookmarks` and is clamped to **1..50** (the
 default is 10). `--count 0` becomes 1, `--count 999` becomes 50. It is read from
 the item list rather than the verb, so it counts whether it was written before or
 after the verb it belongs to — and a value the program cannot read is refused
@@ -77,13 +78,13 @@ flags — and the text sits six levels down inside it. That walk happens once, i
 envelope they arrived in:
 
 ```json
-{"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"1234567890","text":"a tweet","lang":"en","created_at":"Sat Oct 10 00:00:00 +0000 2026","author":{"id":"77","handle":"someone","name":"Some One","verified":false,"avatar":"https://pbs.twimg.com/profile_images/x_normal.jpg"},"metrics":{"replies":3,"retweets":4,"likes":5,"quotes":6,"bookmarks":7,"views":12345},"media":[{"type":"photo","url":"https://pbs.twimg.com/media/one.jpg","alt":null}],"urls":[],"quoted":null,"in_reply_to":null}]},"notes":[]}
+{"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"1234567890","text":"a tweet","lang":"en","created_at":"Sat Oct 10 00:00:00 +0000 2026","author":{"id":"77","handle":"someone","name":"Some One","verified":false,"avatar":"https://pbs.twimg.com/profile_images/x_normal.jpg"},"metrics":{"replies":3,"retweets":4,"likes":5,"quotes":6,"bookmarks":7,"views":12345},"media":[{"type":"photo","url":"https://pbs.twimg.com/media/one.jpg","alt":null}],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 ```
 
 | field | what it holds |
 | --- | --- |
 | `id` | The tweet's id. |
-| `text` | The whole text. A long post answers with the text from `note_tweet`, not the truncated line X puts beside it. |
+| `text` | The whole text. A long post answers with the text from `note_tweet`, not the truncated line X puts beside it, and a post that is an X Article answers with the article's body: its draft.js blocks folded to text, with headings, lists and quotes keeping their markers. |
 | `lang`, `created_at` | The language and the timestamp; `null` when the response did not carry one. |
 | `author` | `id`, `handle`, `name`, `verified`, `avatar`; `null` when there is no author to find. |
 | `metrics` | `replies`, `retweets`, `likes`, `quotes`, `bookmarks`, `views`. A count X did not send is `null`, which is not the same answer as `0`. |
@@ -91,6 +92,7 @@ envelope they arrived in:
 | `urls` | One entry per link: `url`, `expanded`, `display`. |
 | `quoted` | The quoted tweet, in this same shape, one level deep. A quote of a quote is not followed. |
 | `in_reply_to` | The id of the tweet this one answers, `null` when it answers none. |
+| `article_title` | The title of the article the post carries, `null` when it carries none. The body is what `text` holds. |
 
 ```sh
 bird search rust --count 5 … --json | jq -r '.data.tweets[].text'
@@ -98,10 +100,25 @@ bird read 1234567890 … --json | jq -r '.data.tweets[0].author.handle'
 ```
 
 `read` asked for one tweet and X answers with the conversation around it, so it
-keeps the tweet that was asked for. `replies`, `thread`, `search` and `mentions`
-asked for a list and keep every tweet X sent, in X's order. `whoami` answers with
+keeps the tweet that was asked for. `replies`, `thread`, `search`, `mentions` and
+`bookmarks` asked for a list and keep every tweet X sent, in X's order. `whoami` answers with
 one profile in the same spirit (`id`, `handle`, `name`, `verified`, `avatar`,
 `bio`, `followers`, `following`, `tweets`, `location`, `created_at`).
+
+## Bookmarks
+
+`bookmarks` reads the saved bookmarks of the signed-in account. It is a GraphQL
+read like the rest and folds the same way, and it is the one verb whose operation
+is not in X's client bundle: the bundle carries the operations `login` captures
+for everything else, but the bookmark timeline moved out of it. So
+`--op-bookmarks` defaults to a recorded query id rather than the operation's name,
+`login` leaves the setting out of the cache rather than writing it empty, and a run
+that starts answering `Query not found` wants a fresh id:
+
+```sh
+bird bookmarks --count 20 --json
+bird bookmarks --op-bookmarks "$FRESH_ID" --json
+```
 
 ## A terminal gets the tweets
 

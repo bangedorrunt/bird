@@ -61,11 +61,17 @@ it:
 ```json
 {
   "--auth-token": "…", "--ct0": "…",
-  "--web-bearer": "AAAA…", "--gql-features": "{}",
+  "--web-bearer": "AAAA…",
   "--op-viewer": "…", "--op-tweet-detail": "…",
   "--op-search": "…", "--op-create-tweet": "…"
 }
 ```
+
+Two of the settings a run uses are deliberately absent. `--gql-features` is never
+written: a read carries the article feature flags on its own, and a run that wants
+X's own blob passes `--gql-features`. `--op-bookmarks` lands here only when the
+bundle carried that operation, which X's current client no longer does, so the
+recorded default stands until you set the flag yourself.
 
 The file is written `0600`, because it is a copy of your session. The report
 `login` prints names the path and the values it found but never the cookies:

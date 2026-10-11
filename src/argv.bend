@@ -179,6 +179,8 @@ def Argv.kind_of(name: String) -> FlagKind:
       FkValue{}
     case "--op-search":
       FkValue{}
+    case "--op-bookmarks":
+      FkValue{}
     case "--op-viewer":
       FkValue{}
     case "--web-bearer":
@@ -227,6 +229,7 @@ def Argv.flag_names() -> List<&2, String>:
                               "--op-create-tweet" <> (
                                 "--op-tweet-detail" <> (
                                   "--op-search" <> (
+                                    "--op-bookmarks" <> (
                                     "--op-viewer" <> (
                                       "--web-bearer" <> (
                                         "--gql-features" <> (
@@ -239,6 +242,7 @@ def Argv.flag_names() -> List<&2, String>:
                                                   "--chrome-key" <> (
                                                     "--web-home" <> (
                                                       "--settings-path" <> Nil{}
+                                                    )
                                                     )
                                                   )
                                                 )
@@ -284,6 +288,8 @@ def Argv.verb_of(word: String) -> Maybe<&2, D.Verb>:
       Some{D.VerbSearch{SNil{}, P.Cfg.default_count()}}
     case "mentions":
       Some{D.VerbMentions{P.Cfg.default_count()}}
+    case "bookmarks":
+      Some{D.VerbBookmarks{P.Cfg.default_count()}}
     case "whoami":
       Some{D.VerbWhoami{}}
     case "check":
@@ -337,7 +343,8 @@ def Argv.verbs() -> List<&2, String>:
           "thread" <> (
             "search" <> (
               "mentions" <> (
-                "whoami" <> ("check" <> ("login" <> ("help" <> ("schema" <> ("version" <> Nil{}))))))))))))
+                "bookmarks" <> (
+                  "whoami" <> ("check" <> ("login" <> ("help" <> ("schema" <> ("version" <> Nil{})))))))))))))
 
 # Whether the verb takes one positional argument: the target of a read, the
 # query of a search. Everything after it, and every positional for a verb
@@ -481,6 +488,8 @@ def Argv.set_verb_count(+v: D.Verb, +count: U32) -> D.Verb:
       D.VerbSearch{query, count}
     case D.VerbMentions{old}:
       D.VerbMentions{count}
+    case D.VerbBookmarks{old}:
+      D.VerbBookmarks{count}
     case _:
       v
 
@@ -598,6 +607,7 @@ def Argv.help_text() -> String:
   ++ "  thread <tweet-id|url>                                  a whole thread\n"
   ++ "  search <query> [--count <n>]                           recent tweets\n"
   ++ "  mentions [--count <n>]                                 mentions of you\n"
+  ++ "  bookmarks [--count <n>]                                your saved bookmarks\n"
   ++ "  whoami                                                 the signed-in account\n"
   ++ "  check                                                  whether credentials work\n"
   ++ "  login [--cookie-source chrome|firefox]                 import a session and the rotating settings\n"
@@ -725,10 +735,11 @@ def Argv.schema_json() -> J.Json:
         J.pair("gql_base", J.of_str(P.Cfg.default_gql_base())),
         J.pair("mentions_url", J.of_str(P.Cfg.default_mentions_url()))
       ),
-      J.pairs4(
+      J.pairs5(
         J.pair("op_create_tweet", J.of_str(P.Cfg.default_op_create_tweet())),
         J.pair("op_tweet_detail", J.of_str(P.Cfg.default_op_tweet_detail())),
         J.pair("op_search", J.of_str(P.Cfg.default_op_search())),
+        J.pair("op_bookmarks", J.of_str(P.Cfg.default_op_bookmarks())),
         J.pair("op_viewer", J.of_str(P.Cfg.default_op_viewer()))
       )
     ))),

@@ -72,6 +72,14 @@ def timeline_body() -> String:
 def mentions_body() -> String:
   "{\"globalObjects\":{\"tweets\":{\"300\":{\"id_str\":\"300\",\"full_text\":\"a mention\",\"user_id_str\":\"42\",\"favorite_count\":9,\"retweet_count\":1,\"created_at\":\"Sat Oct 10 01:00:00 +0000 2026\",\"in_reply_to_status_id_str\":\"201\"}},\"users\":{\"42\":{\"id_str\":\"42\",\"screen_name\":\"mentioneer\",\"name\":\"Mentioned\",\"verified\":false,\"profile_image_url_https\":\"https://pbs.twimg.com/profile_images/m_normal.jpg\"}}}}"
 
+# An article: the body lives under `article.article_results.result` as draft.js
+# blocks, and `legacy.full_text` is the stub that links to it -- the note_tweet
+# situation at a different size. The blocks cover every kind the fold knows, an
+# `atomic` block with no text, and two ordered lists separated by a paragraph, so
+# the running number has to reset where twitter-cli resets it.
+def article_body() -> String:
+  "{\"data\":{\"tweetResult\":{\"result\":{\"rest_id\":\"900\",\"legacy\":{\"full_text\":\"https://t.co/stub\",\"lang\":\"en\",\"created_at\":\"Sat Oct 10 02:00:00 +0000 2026\"},\"article\":{\"article_results\":{\"result\":{\"title\":\"A Whole Article\",\"content_state\":{\"blocks\":[{\"type\":\"header-one\",\"text\":\"The Head\"},{\"type\":\"unstyled\",\"text\":\"first para\"},{\"type\":\"atomic\",\"text\":\"\"},{\"type\":\"blockquote\",\"text\":\"a quote\"},{\"type\":\"unordered-list-item\",\"text\":\"one\"},{\"type\":\"unordered-list-item\",\"text\":\"two\"},{\"type\":\"ordered-list-item\",\"text\":\"alpha\"},{\"type\":\"ordered-list-item\",\"text\":\"beta\"},{\"type\":\"unstyled\",\"text\":\"between lists\"},{\"type\":\"ordered-list-item\",\"text\":\"fresh\"}]}}}},\"core\":{\"user_results\":{\"result\":{\"rest_id\":\"77\",\"core\":{\"screen_name\":\"writer\",\"name\":\"A Writer\"}}}}}}}}"
+
 # The same endpoint with an entry that carries no `id_str` -- the id is also the
 # map key, so a real answer can leave it out. The tweet has to come back anyway:
 # the field the walk wants is the text, and a timeline answered empty over an id
@@ -109,6 +117,7 @@ def check_shape() -> IO(Unit):
     ok("a count X did not send is null, not zero",
        J.is_null(field_of(field_of(second_of(xs), "metrics"), "likes")))
     ok("...and that tweet still has its metrics object", J.is_obj(field_of(second_of(xs), "metrics")))
+    ok("a tweet that is not an article has no article title", J.is_null(field_of(first_of(xs), "article_title")))
 
 def check_author() -> IO(Unit):
   do IO<Unit>:
@@ -214,6 +223,19 @@ def check_profile() -> IO(Unit):
     ok("a signed out check has no profile to answer with",
        J.is_null(field_of(T.Tweets.profile_in(gone), "profile")))
 
+def check_article() -> IO(Unit):
+  do IO<Unit>:
+    +root : J.Json <- value_of(article_body())
+    +xs : J.Json = tweets_of(root, SNil{})
+    +t : J.Json = first_of(xs)
+    ok("an article answers with its body, not with the stub", String.eq(
+      J.text(field_of(t, "text")),
+      "# The Head\n\nfirst para\n\n> a quote\n\n- one\n\n- two\n\n1. alpha\n\n2. beta\n\nbetween lists\n\n1. fresh"
+    ))
+    ok("the title comes back beside the body", String.eq(J.text(field_of(t, "article_title")), "A Whole Article"))
+    ok("an article carries its author like any other tweet",
+       String.eq(J.text(field_of(field_of(t, "author"), "handle")), "writer"))
+
 def check_nothing_found() -> IO(Unit):
   do IO<Unit>:
     +empty : J.Json <- value_of("{\"data\":{\"x\":{\"entries\":[{\"promoted\":true}]}}}")
@@ -232,4 +254,5 @@ def main() -> IO(Unit):
     check_mentions()
     check_bare_mention()
     check_profile()
+    check_article()
     check_nothing_found()

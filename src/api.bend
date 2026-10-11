@@ -37,6 +37,7 @@ type Wire is Data:
     op_tweet: String,
     op_detail: String,
     op_search: String,
+    op_bookmarks: String,
     op_viewer: String,
     timeout_ms: U32,
     media_upload_base: String,
@@ -174,6 +175,19 @@ def Api.search_vars(query: String, count: U32) -> J.Json:
     J.pair("product", J.of_str("Latest"))
   ))
 
+# X's bookmark timeline takes the web client's own timeline variables. The count,
+# the promoted-content switch and the launch context are what its request
+# carries, and X validates variables before it runs anything; twitter-cli sends
+# exactly these three beside the count, and a live run is what keeps this list
+# honest.
+def Api.bookmarks_vars(count: U32) -> J.Json:
+  J.obj_of(J.pairs4(
+    J.pair("count", J.of_u32(count)),
+    J.pair("includePromotedContent", J.of_bool(False{})),
+    J.pair("latestControlAvailable", J.of_bool(True{})),
+    J.pair("requestContext", J.of_str("launch"))
+  ))
+
 def Api.tweet_vars(+text: String) -> J.Json:
   J.obj_of(J.pairs2(
     J.pair("tweet_text", J.of_str(text)),
@@ -230,12 +244,64 @@ def Api.reply_vars_media(+text: String, +target: String, +ids: List<&2, String>)
     J.pair("media", Api.media_obj(ids))
   ))
 
+# The toggles ride as a body member of their own, and an empty string is how a
+# request says it has none. Only the detail reads ask for the article body; every
+# other verb's body is byte-identical to before, which is what keeps this a
+# setting-shaped add rather than a rewrite of the request shape.
+def Api.toggles_empty(empty: Bool, +toggles: String) -> String:
+  match empty:
+    case True{}:
+      SNil{}
+    case False{}:
+      ",\"fieldToggles\":" ++ toggles
+
+def Api.toggles_part(+toggles: String) -> String:
+  Api.toggles_empty(String.is_empty(toggles), toggles)
+
+# X's own toggle names: the web client sends them with a detail read so the
+# answer carries an article's `content_state` rather than its stub. They rotate
+# the way the operation ids do, so they live here beside the request builder
+# rather than in a config file nobody has a value for.
+def Api.tweet_toggles() -> String:
+  "{\"withArticleRichContentState\":true,\"withArticlePlainText\":true}"
+
+# The toggles are not enough on their own. With `--gql-features` left at its
+# default a live detail read answers the article's t.co stub -- `text` is the
+# link, `lang` is `zxx`, and there is no `article` object at all -- because X
+# gates the body on these feature flags. A blob copied from X's web client
+# already carries them, so this stands in only while the setting holds its
+# default empty object; a blob the operator pasted wins. Live-checked
+# 2026-10-11: with these flags `read 2030904887186514336` answers the article's
+# title and 10 KB body; without them, the stub.
+def Api.article_features() -> String:
+  "{\"longform_notetweets_consumption_enabled\":true,\"responsive_web_twitter_article_tweet_consumption_enabled\":true,\"longform_notetweets_rich_text_read_enabled\":true,\"longform_notetweets_inline_media_enabled\":true,\"articles_preview_enabled\":true}"
+
+# A detail read asks for the article body, so it needs the article flags; every
+# other verb's body stays byte-identical to before.
+# Two defs because a match may only scrutinize a parameter, never a comparison.
+def Api.features_or_article(is_default: Bool, +features: String) -> String:
+  match is_default:
+    case True{}:
+      Api.article_features()
+    case False{}:
+      features
+
+def Api.detail_features(+features: String) -> String:
+  Api.features_or_article(String.eq(features, P.Cfg.default_features()), features)
+
 # Only what this build can supply: X's own `features` and any per-operation
 # extras are the caller's business, and its answer names whichever it wanted.
-def Api.body(+op_id: String, variables: J.Json, +features: String) -> String:
+def Api.body_at(+op_id: String, variables: J.Json, +features: String, +toggles: String) -> String:
   "{\"variables\":" ++ J.show(variables)
   ++ ",\"queryId\":\"" ++ op_id ++ "\""
-  ++ ",\"features\":" ++ features ++ "}"
+  ++ ",\"features\":" ++ features
+  ++ Api.toggles_part(toggles) ++ "}"
+
+def Api.body(+op_id: String, variables: J.Json, +features: String) -> String:
+  Api.body_at(op_id, variables, features, SNil{})
+
+def Api.body_toggles(+op_id: String, variables: J.Json, +features: String) -> String:
+  Api.body_at(op_id, variables, Api.detail_features(features), Api.tweet_toggles())
 
 def Api.raw_vars(variables: J.Json) -> String:
   J.show(variables)
@@ -336,7 +402,7 @@ def Api.media_job_cmd(id: U32, +job: D.MediaJob, +last_id: String, at: String, c
 # which is the head of `done` at the moment the job runs.
 def Api.media_cmd(+cfg: D.RunCfg, +last_id: String, +job: D.MediaJob, id: U32) -> D.Cmd:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       match creds:
         case D.Session{auth_token, ct0, source}:
           Api.media_job_cmd(id, job, last_id, auth_token, ct0, web_bearer, media_upload_base, timeout_ms)
@@ -366,7 +432,7 @@ def Api.media_gate(+creds: D.Creds, +bearer: String) -> Maybe<&2, D.Error>:
 # not have to know which two settings the answer depends on.
 def Api.media_gate_cfg(+cfg: D.RunCfg) -> Maybe<&2, D.Error>:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       Api.media_gate(creds, web_bearer)
 
 # The plain builders refuse attachments rather than dropping them; the fold is
@@ -404,7 +470,7 @@ def Api.session_tweet(
 
 def Api.media_tweet(+cfg: D.RunCfg, +ids: List<&2, String>, id: U32) -> Plan:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       match creds:
         case D.Session{auth_token, ct0, source}:
           Api.session_tweet(verb, auth_token, ct0, id, web_bearer, gql_features, op_create_tweet, timeout_ms, gql_base, ids)
@@ -427,6 +493,7 @@ def Api.gql_verb(
   +op_tweet: String,
   +op_detail: String,
   +op_search: String,
+  +op_bookmarks: String,
   +op_viewer: String,
   timeout_ms: U32,
   gql_base: String,
@@ -436,13 +503,15 @@ def Api.gql_verb(
     case D.VerbWhoami{}:
       Api.send(id, Api.gql_url(gql_base, op_viewer, "Viewer"), Api.session_headers(bearer, ct0, at), Api.body(op_viewer, Api.empty_obj(), features), timeout_ms)
     case D.VerbRead{target}:
-      Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body(op_detail, Api.gql_focal(target), features), timeout_ms)
+      Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body_toggles(op_detail, Api.gql_focal(target), features), timeout_ms)
     case D.VerbReplies{target}:
-      Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body(op_detail, Api.gql_focal(target), features), timeout_ms)
+      Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body_toggles(op_detail, Api.gql_focal(target), features), timeout_ms)
     case D.VerbThread{target}:
-      Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body(op_detail, Api.gql_focal(target), features), timeout_ms)
+      Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body_toggles(op_detail, Api.gql_focal(target), features), timeout_ms)
     case D.VerbSearch{query, count}:
       Api.send(id, Api.gql_url(gql_base, op_search, "SearchTimeline"), Api.session_headers(bearer, ct0, at), Api.body(op_search, Api.search_vars(query, count), features), timeout_ms)
+    case D.VerbBookmarks{count}:
+      Api.send(id, Api.gql_url(gql_base, op_bookmarks, "Bookmarks"), Api.session_headers(bearer, ct0, at), Api.body(op_bookmarks, Api.bookmarks_vars(count), features), timeout_ms)
     case D.VerbTweet{text, media}:
       Api.media_guard(media, Api.send(id, Api.gql_url(gql_base, op_tweet, "CreateTweet"), Api.session_headers(bearer, ct0, at), Api.body(op_tweet, Api.tweet_vars(text), features), timeout_ms))
     case D.VerbReply{target, text, media}:
@@ -463,6 +532,7 @@ def Api.session_verb(
   op_tweet: String,
   op_detail: String,
   op_search: String,
+  op_bookmarks: String,
   op_viewer: String,
   timeout_ms: U32,
   gql_base: String,
@@ -472,12 +542,12 @@ def Api.session_verb(
     case True{}:
       PlanStop{Api.no_bearer()}
     case False{}:
-      Api.gql_verb(verb, at, ct0, id, bearer, features, op_tweet, op_detail, op_search, op_viewer, timeout_ms, gql_base, mentions_url)
+      Api.gql_verb(verb, at, ct0, id, bearer, features, op_tweet, op_detail, op_search, op_bookmarks, op_viewer, timeout_ms, gql_base, mentions_url)
 
 def Api.session(verb: D.Verb, at: String, ct0: String, id: U32, wire: Wire) -> Plan:
   match wire:
-    case Wire{+bearer, features, api_base, op_tweet, op_detail, op_search, op_viewer, timeout_ms, media_upload_base, gql_base, mentions_url}:
-      Api.session_verb(String.is_empty(bearer), verb, at, ct0, id, bearer, features, op_tweet, op_detail, op_search, op_viewer, timeout_ms, gql_base, mentions_url)
+    case Wire{+bearer, features, api_base, op_tweet, op_detail, op_search, op_bookmarks, op_viewer, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      Api.session_verb(String.is_empty(bearer), verb, at, ct0, id, bearer, features, op_tweet, op_detail, op_search, op_bookmarks, op_viewer, timeout_ms, gql_base, mentions_url)
 
 # ── the sweetistics engine ──────────────────────────────────────────────
 
@@ -494,6 +564,7 @@ def Api.sweet_verb(
   +op_tweet: String,
   +op_detail: String,
   +op_search: String,
+  +op_bookmarks: String,
   +op_viewer: String,
   timeout_ms: U32
 ) -> Plan:
@@ -512,6 +583,8 @@ def Api.sweet_verb(
       Api.media_guard(media, Api.send(id, op_tweet, Api.key_headers(key), Api.sweet_body(op_tweet, Api.tweet_vars(text)), timeout_ms))
     case D.VerbReply{target, text, media}:
       Api.media_guard(media, Api.send(id, op_tweet, Api.key_headers(key), Api.sweet_body(op_tweet, Api.reply_vars(text, target)), timeout_ms))
+    case D.VerbBookmarks{count}:
+      Api.send(id, op_bookmarks, Api.key_headers(key), Api.sweet_body(op_bookmarks, Api.bookmarks_vars(count)), timeout_ms)
     case D.VerbMentions{count}:
       PlanStop{Api.mentions_needs_session()}
     case _:
@@ -521,8 +594,8 @@ def Api.sweet_verb(
 # to `api_base`; the builder only sees them already joined.
 def Api.sweet_plan(verb: D.Verb, key: String, +base: String, id: U32, wire: Wire) -> Plan:
   match wire:
-    case Wire{bearer, features, api_base, op_tweet, op_detail, op_search, op_viewer, timeout_ms, media_upload_base, gql_base, mentions_url}:
-      Api.sweet_verb(verb, key, id, Api.sweet_url(base, op_tweet), Api.sweet_url(base, op_detail), Api.sweet_url(base, op_search), Api.sweet_url(base, op_viewer), timeout_ms)
+    case Wire{bearer, features, api_base, op_tweet, op_detail, op_search, op_bookmarks, op_viewer, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      Api.sweet_verb(verb, key, id, Api.sweet_url(base, op_tweet), Api.sweet_url(base, op_detail), Api.sweet_url(base, op_search), Api.sweet_url(base, op_bookmarks), Api.sweet_url(base, op_viewer), timeout_ms)
 
 # ── entry ───────────────────────────────────────────────────────────────
 
@@ -539,8 +612,8 @@ def Api.choose(verb: D.Verb, creds: D.Creds, id: U32, wire: Wire) -> Plan:
 
 def Api.plan(cfg: D.RunCfg, id: U32) -> Plan:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
-      Api.choose(verb, creds, id, Wire{web_bearer, gql_features, api_base, op_create_tweet, op_tweet_detail, op_search, op_viewer, timeout_ms, media_upload_base, gql_base, mentions_url})
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      Api.choose(verb, creds, id, Wire{web_bearer, gql_features, api_base, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, timeout_ms, media_upload_base, gql_base, mentions_url})
 
 # ── describing a command, for `--dry-run` ───────────────────────────────
 #
@@ -652,7 +725,7 @@ def Api.job_jsons(+jobs: List<&2, D.MediaJob>, +last_id: String, +at: String, +c
 
 def Api.describe_media(+cfg: D.RunCfg, id: U32) -> J.Json:
   match cfg:
-    case D.RunCfg{+verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, +web_bearer, +gql_features, api_base, +timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{+verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, +web_bearer, +gql_features, api_base, +timeout_ms, media_upload_base, gql_base, mentions_url}:
       match creds:
         case D.Session{+auth_token, +ct0, source}:
           J.obj_of(J.pairs4(

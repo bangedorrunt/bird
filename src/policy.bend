@@ -657,9 +657,12 @@ def Cfg.rc_items(fs: List<&2, J.JField>) -> List<&2, D.Item>:
 def Cfg.default_features() -> String:
   "{}"
 
-# X's operation names, one per verb the graphql engine sends. They are defaults
+# X's operation ids, one per verb the graphql engine sends. They are defaults
 # rather than constants in the request builders, so `bird schema` can print them
-# and the run can override them without the two drifting apart.
+# and the run can override them without the two drifting apart. The first four
+# read like operation names because that is what a run with no `login` behind it
+# sends: the name is enough for the sweetistics engine, which routes on it, and
+# the graphql engine gets real ids from the bundle through `login`.
 def Cfg.default_op_create_tweet() -> String:
   "CreateTweet"
 
@@ -668,6 +671,16 @@ def Cfg.default_op_tweet_detail() -> String:
 
 def Cfg.default_op_search() -> String:
   "SearchTimeline"
+
+# The exception: X's current bundle does not carry the Bookmarks operation --
+# the live 1.15 MB main.js checked on 2026-10-11 has BookmarkSearchTimeline,
+# CreateBookmark and DeleteBookmark but no `Bookmarks` record -- so `login`
+# cannot fill this one from it, and a run that sent the operation's own name as
+# its id would be refused at X. The default is the current recorded query id,
+# the value the community sources carry, and `--op-bookmarks`, BIRD_OP_BOOKMARKS
+# or the cache all override it when X rotates it.
+def Cfg.default_op_bookmarks() -> String:
+  "XD0ViOeSOW4YoeNTGjVaYw"
 
 def Cfg.default_op_viewer() -> String:
   "Viewer"
@@ -900,6 +913,7 @@ def Cfg.finish(+items: List<&2, D.Item>,+env: List<&2, D.Item>,+rc: List<&2, D.I
     Cfg.order(items, env, rc, "--op-create-tweet", Cfg.default_op_create_tweet()),
     Cfg.order(items, env, rc, "--op-tweet-detail", Cfg.default_op_tweet_detail()),
     Cfg.order(items, env, rc, "--op-search", Cfg.default_op_search()),
+    Cfg.order(items, env, rc, "--op-bookmarks", Cfg.default_op_bookmarks()),
     Cfg.order(items, env, rc, "--op-viewer", Cfg.default_op_viewer()),
     Cfg.order(items, env, rc, "--web-bearer", SNil{}),
     Cfg.order(items, env, rc, "--gql-features", Cfg.default_features()),

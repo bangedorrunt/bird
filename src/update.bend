@@ -170,7 +170,7 @@ def Update.cfg_of(+m: D.Model) -> D.RunCfg:
 
 def Update.verb_in(+cfg: D.RunCfg) -> D.Verb:
   match cfg:
-    case D.RunCfg{verb, dry_run, out, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, dry_run, out, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       verb
 
 def Update.verb_of(+m: D.Model) -> D.Verb:
@@ -343,6 +343,8 @@ def Update.shaped_verb(+v: D.Verb, +root: J.Json) -> J.Json:
       T.Tweets.list_in(root, SNil{})
     case D.VerbSearch{query, count}:
       T.Tweets.list_in(root, SNil{})
+    case D.VerbBookmarks{count}:
+      T.Tweets.list_in(root, SNil{})
     case D.VerbMentions{count}:
       T.Tweets.list_in(root, SNil{})
     case D.VerbWhoami{}:
@@ -445,7 +447,7 @@ def Update.login_write_lost(+path: String, message: String) -> D.Error:
 
 def Update.timeout_in(+cfg: D.RunCfg) -> U32:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       timeout_ms
 
 def Update.cfg_timeout(+m: D.Model) -> U32:
@@ -739,13 +741,14 @@ def Update.cookie_origin(+source: String) -> String:
       "imported from " ++ source
 
 def Update.login_json(+j: J.Json, +path: String, +source: String) -> J.Json:
-  J.obj7(
+  J.obj8(
     J.pair("settings_path", J.of_str(path)),
     J.pair("cookies", J.of_str(Update.cookie_origin(source))),
     J.pair("web_bearer", J.get_or_null(j, "--web-bearer")),
     J.pair("op_viewer", J.get_or_null(j, "--op-viewer")),
     J.pair("op_tweet_detail", J.get_or_null(j, "--op-tweet-detail")),
     J.pair("op_search", J.get_or_null(j, "--op-search")),
+    J.pair("op_bookmarks", J.get_or_null(j, "--op-bookmarks")),
     J.pair("op_create_tweet", J.get_or_null(j, "--op-create-tweet"))
   )
 
@@ -902,14 +905,15 @@ def Update.count_in(+s: D.Start) -> U32:
 # from. A `check` that called X would be `whoami`, which is a different verb.
 def Update.check_report(+cfg: D.RunCfg) -> J.Json:
   match cfg:
-    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       J.obj_of(J.pairs4(
         J.pair("engine", J.of_str(D.Engine.name(engine))),
         J.pair("credentials", J.of_str(D.Creds.source(creds))),
-        J.pair("operations", J.obj_of(J.pairs4(
+        J.pair("operations", J.obj_of(J.pairs5(
           J.pair("create_tweet", J.of_str(op_create_tweet)),
           J.pair("tweet_detail", J.of_str(op_tweet_detail)),
           J.pair("search", J.of_str(op_search)),
+          J.pair("bookmarks", J.of_str(op_bookmarks)),
           J.pair("viewer", J.of_str(op_viewer))
         ))),
         J.pair("timeout_ms", J.of_u32(timeout_ms))
@@ -1303,7 +1307,7 @@ def Update.route_on(login: Bool, +verb: D.Verb, +m: D.Model, +cfg: D.RunCfg, dry
 
 def Update.routed(+m: D.Model, +cfg: D.RunCfg) -> D.Step:
   match cfg:
-    case D.RunCfg{+verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+    case D.RunCfg{+verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_bookmarks, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       Update.route_on(
         Update.is_login(verb),
         verb,

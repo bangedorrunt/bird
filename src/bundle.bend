@@ -66,7 +66,7 @@ def Bundle.join_bearer(+tail: String) -> String:
 def Bundle.bearer(+js: String) -> String:
   Bundle.join_bearer(Bundle.bearer_tail(js))
 
-# ── the four operation ids ──────────────────────────────────────────────
+# ── the operation ids ───────────────────────────────────────────────────
 
 def Bundle.op_viewer() -> String:
   "Viewer"
@@ -76,6 +76,9 @@ def Bundle.op_detail() -> String:
 
 def Bundle.op_search() -> String:
   "SearchTimeline"
+
+def Bundle.op_bookmarks() -> String:
+  "Bookmarks"
 
 def Bundle.op_create() -> String:
   "CreateTweet"
@@ -88,10 +91,11 @@ type Found is Data:
     viewer: String,
     detail: String,
     search: String,
+    bookmarks: String,
     create: String,
   }
 
-# The record walk happens once, so all four ids come out of a single pass and the
+# The record walk happens once, so all the ids come out of a single pass and the
 # bearer out of the document itself. The caller hands the collected pairs in so
 # the pass is not repeated for each name.
 # Positional, in the order the record declares its fields: Bend has no
@@ -103,6 +107,7 @@ def Bundle.found_at(+js: String, +pairs: String) -> Found:
     S.Scan.looked_up(pairs, Bundle.op_viewer()),
     S.Scan.looked_up(pairs, Bundle.op_detail()),
     S.Scan.looked_up(pairs, Bundle.op_search()),
+    S.Scan.looked_up(pairs, Bundle.op_bookmarks()),
     S.Scan.looked_up(pairs, Bundle.op_create())
   }
 
@@ -111,9 +116,18 @@ def Bundle.found(+js: String) -> Found:
 
 # ── what is missing, by name ────────────────────────────────────────────
 #
-# A bundle that answered with three of five leaves a run that looks configured
-# and is not, so the first hole is named and the run stops here. `--flag` names
-# are what the hint offers, because those are what a person can set by hand.
+# A bundle that answered with three of four operations leaves a run that looks
+# configured and is not, so the first hole is named and the run stops here.
+# `--flag` names are what the hint offers, because those are what a person can
+# set by hand.
+#
+# The bookmarks operation is deliberately NOT one of the required four: on
+# 2026-10-11 the live 1.15 MB main.js carried Viewer, TweetDetail, SearchTimeline
+# and CreateTweet but no `Bookmarks` record at all -- the bookmarks page is served
+# by a route that gets its operation from somewhere else now. A login that refused
+# on a hole the bundle cannot fill would break every login, so it is left optional:
+# found when X carries it, and left out of the cache when X does not, so the
+# recorded default is what a run uses until the operator sets `--op-bookmarks`.
 
 # The name of the setting that is empty, or nothing when they are all there.
 def Bundle.absent(+s: String, +name: String) -> String:
@@ -135,7 +149,7 @@ def Bundle.hole(+s: String, +name: String, +so_far: String) -> String:
 
 def Bundle.missing(+f: Found) -> String:
   match f:
-    case Found{bearer, viewer, detail, search, create}:
+    case Found{bearer, viewer, detail, search, bookmarks, create}:
       Bundle.hole(
         create,
         "--op-create-tweet",
@@ -161,18 +175,40 @@ def Bundle.missing(+f: Found) -> String:
 # a read work with no flags at all after one `login`. That is a deliberate
 # reversal of the original non-goal -- see docs/decisions/0001-design-bird.md --
 # and it is why the file is written 0600.
-def Bundle.cache_json(+f: Found, +at: String, +ct0: String) -> J.Json:
+#
+# An operation the bundle did not carry is left out rather than written empty: a
+# source that names a setting wins over the default even when its value is empty,
+# so an empty string here would shadow the recorded default for as long as the
+# cache lives.
+def Bundle.kept(found: Bool, +name: String, +value: String) -> List<&2, J.JField>:
+  match found:
+    case True{}:
+      J.pair(name, J.of_str(value)) <> Nil{}
+    case False{}:
+      Nil{}
+
+def Bundle.cache_fields(+f: Found, +at: String, +ct0: String) -> List<&2, J.JField>:
   match f:
-    case Found{bearer, viewer, detail, search, create}:
-      J.obj7(
-        J.pair("--auth-token", J.of_str(at)),
-        J.pair("--ct0", J.of_str(ct0)),
-        J.pair("--web-bearer", J.of_str(bearer)),
-        J.pair("--op-viewer", J.of_str(viewer)),
-        J.pair("--op-tweet-detail", J.of_str(detail)),
-        J.pair("--op-search", J.of_str(search)),
-        J.pair("--op-create-tweet", J.of_str(create))
+    case Found{bearer, viewer, detail, search, bookmarks, create}:
+      J.pair("--auth-token", J.of_str(at)) <> (
+        J.pair("--ct0", J.of_str(ct0)) <> (
+          J.pair("--web-bearer", J.of_str(bearer)) <> (
+            J.pair("--op-viewer", J.of_str(viewer)) <> (
+              J.pair("--op-tweet-detail", J.of_str(detail)) <> (
+                J.pair("--op-search", J.of_str(search)) <> (
+                  List.append(&2, J.JField,
+                    Bundle.kept(Bool.not(String.is_empty(bookmarks)), "--op-bookmarks", bookmarks),
+                    J.pair("--op-create-tweet", J.of_str(create)) <> Nil{}
+                  )
+                )
+              )
+            )
+          )
+        )
       )
+
+def Bundle.cache_json(+f: Found, +at: String, +ct0: String) -> J.Json:
+  J.obj_of(Bundle.cache_fields(f, at, ct0))
 
 def Bundle.cache_text(+f: Found, +at: String, +ct0: String) -> String:
   J.pretty(Bundle.cache_json(f, at, ct0))

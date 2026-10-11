@@ -205,7 +205,7 @@ cases, bad numbers refused).
 
 **Decision.** Everything that can rotate or belong to a deployment is a setting:
 the GraphQL query ids (`--op-viewer`, `--op-tweet-detail`, `--op-search`,
-`--op-create-tweet`), the web bearer, the features blob, `api_base`, the
+`--op-create-tweet`, `--op-bookmarks`), the web bearer, the features blob, `api_base`, the
 timeouts, **and the hosts** — `--gql-base` (`https://x.com/i/api/graphql`),
 `--mentions-url` (`https://x.com/i/api/2/notifications/mentions.json`) and
 `--media-upload-base` (`https://upload.twitter.com/1.1/media`, the `/1.1/media`
@@ -221,8 +221,20 @@ acceptable response to a rotated query id. Live, the bearer and four query ids
 were pulled out of X's own client bundle and passed as settings, with no code
 change: the four read verbs had been refused (403) until then.
 
-**Ruled out.** Compiling a bearer or a query id into the source; a "constants"
-module; re-deriving them at runtime (that is a scraper, not a program).
+**Two values are recorded rather than discovered.** X's current client bundle no
+longer carries the bookmark timeline's operation, and a detail read answers an
+article's `t.co` stub unless the article feature flags go with it, so those are
+the two values this build carries a copy of: `Cfg.default_op_bookmarks` is the
+query id the community sources last recorded, and a detail read supplies the
+article feature flags when the run left `--gql-features` at its empty default.
+Both stay settings first — `--op-bookmarks`, `--gql-features` and the cache all
+win over them — and both are recorded with the date they were taken, so a
+rotation is a settings change rather than a release.
+
+**Ruled out.** Compiling a bearer or a query id into the source (the recorded
+bookmarks id is a default that the flag and the cache override, not the only path
+to the value); a "constants" module; re-deriving them at runtime (that is a
+scraper, not a program).
 
 **Proved by.** `tests/api_test.bend` (configured query ids and features reach the
 URL/body verbatim), `tests/update_test.bend`, and the live run: `whoami`, `read`,
@@ -505,9 +517,9 @@ received.
 **Decision.** X's answers are folded into one shape in the pure core
 (`src/tweets.bend`), and every read verb answers with it: `data.tweets[]`, each
 tweet an `id`, `text`, `lang`, `created_at`, `author`, `metrics`, `media`, `urls`,
-`quoted` and `in_reply_to`. `read` narrows the conversation X sends to the tweet
-that was asked for; `replies`, `thread`, `search` and `mentions` keep every tweet,
-in X's order. `whoami` answers with one profile in the same spirit. `--raw` is the
+`quoted`, `in_reply_to` and `article_title`. `read` narrows the conversation X
+sends to the tweet that was asked for; `replies`, `thread`, `search`, `mentions`
+and `bookmarks` keep every tweet, in X's order. `whoami` answers with one profile in the same spirit. `--raw` is the
 escape hatch: the body X sent, unwrapped and untouched.
 
 Three response shapes have to be recognised and they are genuinely different: a
@@ -519,6 +531,14 @@ when the tweet has one there and from the top level otherwise, because `views` a
 `rest_id` are top-level on both. A quoted tweet is a tweet inside a tweet, so the
 walk collects a node and does not descend into it — descending would answer a
 search with the quote as a result of its own.
+
+A post that is an X Article is the one place a read answers with more than
+`full_text`, and it is not a shape of its own: `legacy.full_text` is the `t.co`
+stub the web client displays and the article hangs beside it under
+`article.article_results.result`, as a title and draft.js blocks. The fold reads
+those blocks to text, headings, lists and quotes keeping their markers, and the
+title comes back as `article_title`. `bookmarks` is the same walk over the saved
+timeline, whose key differs and whose operation X's bundle no longer names.
 
 **Why.** The envelope is about 119 KB for one tweet and the text is six levels
 down. Every caller would otherwise write that walk, and no two of them would be
@@ -533,11 +553,14 @@ the walk does not need is missing — `id_str` is read for the id when X sent it
 is not what marks a tweet, because one dropped over it is an empty timeline handed
 to the caller.
 
-**Proved by.** `tests/tweets_test.bend` (63 cases across all three shapes) and
+**Proved by.** `tests/tweets_test.bend` (67 cases across all three shapes) and
 `tests/e2e.sh`: a fixture read answers with `data.tweets[0]` and none of the
 envelope's keys, `--raw` answers with the envelope itself, the mentions read
 against the stand-in is asserted for the author looked up in the map beside the
-tweet, and the pty case asserts the block a person sees.
+tweet, and the pty case asserts the block a person sees. The article fold is
+proved both ways: offline over a stub-plus-article body, and over the socket
+against the stand-in, where the body the server received is asserted to carry the
+article feature flags and the field toggles that make X send that body at all.
 
 **Cost.** One more module in the pure core, and one more thing to keep true when X
 reshapes an answer. The shapes it knows are named in that module's own header, so

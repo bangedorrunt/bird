@@ -22,6 +22,7 @@ service and the mentions timeline, which are pointed at with `--media-upload-bas
 and `--mentions-url`:
 
     POST /viewer                    200  a viewer payload, the shape `whoami` reads
+    POST /bookmarks                 200  a bookmark timeline, the shape `bookmarks` reads
     POST /detail                    404  X's own not-found body
     POST /search                    429  a rate-limit body with no JSON at all
     POST /tweet                     500  an upstream failure
@@ -29,6 +30,7 @@ and `--mentions-url`:
     POST /media/upload.json         200  a media id, the shape an upload returns
     POST /media/metadata/create.json 200 an empty acceptance of an alt text
     POST /graphql/create-tweet/CreateTweet 200  a created tweet
+    POST /graphql/detail/TweetDetail 200  an article-shaped tweet, body and all
     GET  /mentions.json             200  a mentions timeline
     GET  /home                       200  the web client's own page, naming its bundle
     GET  /client-web/main.<hash>.js  200  a bundle carrying a bearer and four ops
@@ -73,6 +75,12 @@ BODIES = {
                 '{"data":{"viewer":{"user_results":{"result":{"rest_id":"1","legacy":'
                 '{"screen_name":"bird_live_probe","name":"Bird Probe"}}}}}}'),
     "/big": (200, "application/json", big_body()),
+    # The bookmarks timeline, under its own key. The fold walks for tweets
+    # wherever they are, so the key itself is the only thing this shape adds.
+    "/bookmarks": (200, "application/json",
+                  '{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":[{"content":'
+                  '{"itemContent":{"tweet_results":{"result":{"rest_id":"6060",'
+                  '"legacy":{"full_text":"a saved tweet","id_str":"6060"}}}}}}]}]}}}}'),
     "/detail": (404, "application/json", '{"errors":[{"message":"No tweet found"}]}'),
     "/search": (429, "text/plain", "Rate limit exceeded"),
     "/tweet": (500, "application/json", '{"errors":[{"message":"Internal error"}]}'),
@@ -82,6 +90,19 @@ BODIES = {
     "/media/upload.json": (200, "application/json",
                            '{"media_id":111,"media_id_string":"111"}'),
     "/media/metadata/create.json": (200, "application/json", "{}"),
+    # A post that is an X Article, at the graphql base and operation id the run
+    # names. `legacy.full_text` is the t.co stub a client shows and the body is
+    # under `article`; both are here because the fold's job is to answer with the
+    # second, and a fixture carrying only the body would pass without the stub ever
+    # being weighed against it.
+    "/graphql/detail/TweetDetail": (200, "application/json",
+                                    '{"data":{"threaded_conversation_with_injections_v2":{"instructions":'
+                                    '[{"entries":[{"content":{"itemContent":{"tweet_results":{"result":'
+                                    '{"rest_id":"12345","legacy":{"full_text":"https://t.co/stub","id_str":"12345",'
+                                    '"lang":"zxx"},"article":{"article_results":{"result":{'
+                                    '"title":"a live article","content_state":{"blocks":['
+                                    '{"type":"header-one","text":"the head"},'
+                                    '{"type":"unstyled","text":"the body"}]}}}}}}}}}]}]}}}'),
     # The post, at the graphql base and operation id the run names.
     "/graphql/create-tweet/CreateTweet": (200, "application/json",
                                     '{"data":{"create_tweet":{"tweet_results":{"result":'
@@ -110,6 +131,7 @@ BUNDLE_PATH = "/client-web/main.livetest.js"
 BUNDLE_JS = ("e.exports={queryId:\"LIVEVIEWERID1\",operationName:\"Viewer\",operationType:\"query\"}"
              ",{queryId:\"LIVEDETAILID2\",operationName:\"TweetDetail\",operationType:\"query\"}"
              ",{queryId:\"LIVESEARCHID3\",operationName:\"SearchTimeline\",operationType:\"query\"}"
+             ",{queryId:\"LIVEBOOKMARKS5\",operationName:\"Bookmarks\",operationType:\"query\"}"
              ",{queryId:\"LIVECREATEID4\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
              ",Bearer AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL\",")
 

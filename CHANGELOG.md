@@ -35,6 +35,22 @@ log starts at `0.3.0`.
   field X did not send drops out of its line instead of leaving an empty slot, an
   answer holding no tweet says `no tweets`, and every other payload keeps the
   indent rendering.
+- **`bookmarks`**: reads the saved timeline of the signed-in account, folded the
+  same way as every other read (`data.tweets[]`) and with the same `--count`. It
+  is the one verb whose operation X's client bundle no longer names, so
+  `--op-bookmarks` defaults to a recorded query id rather than to the operation's
+  name, `login` writes the setting only when the bundle carried it (an empty one
+  would shadow the default), and X answering `Query not found` is the signal to
+  set a fresh id.
+- **An article post answers with the article, not its `t.co` stub.** A post that
+  is an X Article keeps its title under `article.article_results.result` and its
+  body in draft.js blocks beside it, so `text` is now the folded body (headings,
+  lists and quotes keeping their markers) and `article_title` is the title, `null`
+  on every post that carries none. X gates that body on feature flags, and the
+  field toggles alone are not enough: a `read`/`replies`/`thread` run that left
+  `--gql-features` at its empty default now carries the article flags rather than
+  going out flagless, which is what a 200 answering the link instead of the
+  article was. Every other verb's request body is unchanged.
 - `scripts/check-beads-ledger.sh`: fails closed on a beads-ledger row-set
   regression before `.beads/` is committed. `.beads/issues.jsonl` is a
   full-snapshot export, so a worktree writing it from its own older sqlite drops
@@ -48,7 +64,7 @@ log starts at `0.3.0`.
   build happens in a temporary directory and is moved into place, so a failed build
   leaves the copy already on PATH alone and leaves nothing in the repo.
 - **`login`**: reads the session out of Chrome or Firefox and the rotating
-  settings — the web bearer and the four operation ids — out of X's own client
+  settings — the web bearer and the operation ids it carries — out of X's own client
   bundle, and writes both to a settings cache every later run reads with no
   credential flags. Chrome's cookies are decrypted with the key from the login
   keychain (`--chrome-key` supplies it directly, which is what makes the recipe
