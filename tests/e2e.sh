@@ -9,8 +9,10 @@
 #   bash tests/e2e.sh
 #   BIRD_E2E_OUT=/tmp/transcript.txt bash tests/e2e.sh
 #
-# Needs `bend` on PATH, and a POSIX `sh` -- the program asks `sh` whether stdout
-# is a terminal. The artifact is the transcript: one block per case carrying the
+# Needs `bend` on PATH; the last block also needs `curl` and `python3`, and the
+# pty case needs `script`. Nothing here needs a shell of its own: the program
+# reads `TERM` rather than asking a child, so `curl` is the only process it
+# starts. The artifact is the transcript: one block per case carrying the
 # command, the exit code and the output, so a failure can be both read and rerun
 # by hand. All fixtures are built in a temporary directory and thrown away.
 set -u

@@ -35,6 +35,20 @@ writing, media, reading, mentions, and the contract an agent sees.
 | `tests/live_server.py` | A stand-in backend so the transport can be exercised over a real socket without reaching X: the four operations, the media service and the mentions timeline. |
 | `CHANGELOG.md` | Release notes, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. `bird version` prints the version the log's newest entry names. |
 
+## Run it
+
+The program is one file, so it runs without being built — and it compiles to a
+binary that needs nothing but `curl` at runtime:
+
+```sh
+bend src/effects.bend -- read 12345 --json   # run it from source
+bend src/effects.bend -o bird                # compile it (needs clang)
+install -m 0755 bird ~/.local/bin/bird       # then: bird read 12345 --json
+```
+
+`bird` reads its settings from flags, the environment or a `BIRD_CONFIG` file;
+`bird help` prints the manual and `bird schema --json` the whole contract.
+
 ## Verify it
 
 ```sh

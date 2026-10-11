@@ -27,6 +27,8 @@ bend PROOF.bend                           # laws gate the build
 bend tests/argv_test.bend                 # offline suites: argv, api, http, json, update
 bash tests/e2e.sh                         # the seam: real socket, stand-in server, exit codes
 bend src/effects.bend -- check --json     # run it; everything after `--` is argv
+bend src/effects.bend -o bird             # or compile the CLI (needs clang)
+install -m 0755 bird ~/.local/bin/bird    # `bird` on PATH; the binary needs only curl
 ```
 
 The offline suites stop at the pure core. Anything that crosses the fold →
