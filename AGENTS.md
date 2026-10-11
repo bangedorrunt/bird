@@ -1,6 +1,6 @@
 When using Bend:
 
-- run `bend guide` to learn it; the binary is `~/.bend/bin/bend` (not on PATH here)
+- run `bend guide` to learn it; the binary is `~/.bend/bin/bend`, which `~/.zprofile` now puts on PATH (a harness that does not source it can still use the absolute path)
 - use `LAWS.bend` to keep important rules; a law that will not prove is a bug in the code, never edit a law down to what is provable
 - run `bend PROOF.bend` before committing (`ALL PROOFS CHECK`); `--verdict` re-checks it with the Lean-proven kernel and works here now that Lean 4.34.0 (`elan`) is installed — it prints the same line only when every def outside Base is a valid proof with no `@unsafe` or foreign code
 - parallelize the code whenever possible: the pure core has no limit, but the IO loop in `src/effects.bend` is one serial lane by language rule (a recursive call may not sit inside a closure)
@@ -21,7 +21,7 @@ drift: `tests/e2e.sh` reads every `--flag` they name and fails if the parser doe
 not accept it, and the guides must keep that check green.
 
 ```sh
-PATH="$HOME/.bend/bin:$PATH"
+PATH="$HOME/.bend/bin:$PATH"              # harness shells are not login shells; `~/.zprofile` covers a person
 bend src/effects.bend --check-only        # the program and its imports type-check
 bend PROOF.bend                           # laws gate the build
 bend tests/argv_test.bend                 # offline suites: argv, api, http, json, update
@@ -29,6 +29,7 @@ bash tests/e2e.sh                         # the seam: real socket, stand-in serv
 bend src/effects.bend -- check --json     # run it; everything after `--` is argv
 bend src/effects.bend -o bird             # or compile the CLI (needs clang)
 install -m 0755 bird ~/.local/bin/bird    # `bird` on PATH; the binary needs only curl
+bird read 12345 --json                    # then call the CLI itself
 ```
 
 The offline suites stop at the pure core. Anything that crosses the fold →

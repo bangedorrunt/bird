@@ -176,6 +176,15 @@ file is one JSON object of flag names to values; a file that is not JSON, a key
 the flag table does not know, or a value that is not a number is refused with a
 `usage` error rather than ignored.
 
+**Two names for the session cookies.** `--auth-token` and `--ct0` are also read
+from `TWITTER_AUTH_TOKEN` and `TWITTER_CT0`: that is what a shell which already
+talks to X exports, and every guide example passes those variables explicitly,
+so a run that ignored them would report `auth` with the credential sitting in its
+own environment. Both spellings work and neither is deprecated; the `BIRD_`
+spelling wins when both are set (`Items.str` takes the last match, so the aliases
+are listed first in the environment table). The alternative — telling every user
+to rename their variables — costs more than one row of a table.
+
 **Ruled out.** Per-verb flag reading (the parser cannot know `--count` belongs to
 `search` when it comes after the verb's arguments), a settings record threaded
 everywhere (it forces the whole config to be read even for `help`).
@@ -494,7 +503,8 @@ artifact remains the stand-in; credentials never enter the repo.
 * **Configuration** (all read through one resolver; flags of the same name win,
   then environment, then `BIRD_CONFIG`'s JSON file): `BIRD_AUTH_TOKEN`,
   `BIRD_CT0`, `BIRD_ENGINE`, `BIRD_COUNT`, `BIRD_TIMEOUT_MS`, `BIRD_JSON`,
-  `BIRD_FIXTURE`, `BIRD_TEXT_FILE`, `BIRD_CONFIG`,
+  `BIRD_FIXTURE`, `BIRD_TEXT_FILE`, `BIRD_CONFIG`, `TWITTER_AUTH_TOKEN`,
+  `TWITTER_CT0` (the two cookie aliases — both spellings work, `BIRD_` wins),
   `BIRD_SWEETISTICS_API_KEY`, `BIRD_SWEETISTICS_BASE_URL`, `BIRD_WEB_BEARER`,
   `BIRD_GQL_FEATURES`, `BIRD_OP_VIEWER`, `BIRD_OP_TWEET_DETAIL`,
   `BIRD_OP_SEARCH`, `BIRD_OP_CREATE_TWEET`, `BIRD_MEDIA_UPLOAD_BASE`,
@@ -509,7 +519,7 @@ artifact remains the stand-in; credentials never enter the repo.
   `api` 48, `update` 101): `bend tests/argv_test.bend`, `tests/api_test.bend`,
   `tests/http_test.bend`, `tests/json_test.bend`, `tests/update_test.bend`.
   Covers sections 4–11.
-- [x] `bash tests/e2e.sh` — 67 cases, 67 ok, 0 failed, 0 skipped: command line,
+- [x] `bash tests/e2e.sh` — 70 cases, 70 ok, 0 failed, 0 skipped: command line,
   envelope, exit codes, `retryable`, dry runs, wire-log assertions, the media
   write (upload → alt → post) and the mentions read against the stand-in, the
   300 KB body, the pty case, the schema's defaults, and the guides' flags

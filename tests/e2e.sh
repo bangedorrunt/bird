@@ -23,6 +23,19 @@ BEND="${BEND:-bend}"
 # script owns that variable rather than inheriting whatever the caller had: every
 # pipe case here is a pipe, and only the pty case asks for a terminal.
 unset TERM
+# The suite owns its environment. This machine's shell exports a real X session
+# under the alias names (TWITTER_AUTH_TOKEN, TWITTER_CT0), and without this the
+# "no credentials" case would find a live session, reach X, and pass or fail on
+# someone else's account. Every name the program reads is cleared; a case that
+# needs one passes it with `--env`.
+for v in TWITTER_AUTH_TOKEN TWITTER_CT0 BIRD_JSON BIRD_AUTH_TOKEN BIRD_CT0 BIRD_ENGINE \
+         BIRD_COUNT BIRD_TIMEOUT_MS BIRD_FIXTURE BIRD_TEXT_FILE \
+         BIRD_SWEETISTICS_API_KEY BIRD_SWEETISTICS_BASE_URL BIRD_WEB_BEARER \
+         BIRD_GQL_FEATURES BIRD_OP_CREATE_TWEET BIRD_OP_TWEET_DETAIL BIRD_OP_SEARCH \
+         BIRD_OP_VIEWER BIRD_MEDIA_UPLOAD_BASE BIRD_GQL_BASE BIRD_MENTIONS_URL \
+         BIRD_CONFIG; do
+  unset "$v"
+done
 OUT="${BIRD_E2E_OUT:-tests/e2e_artifact.txt}"
 WORK="$(mktemp -d)"
 LIVE_PID=""
@@ -71,6 +84,15 @@ run_cfg() {
   status=$?
 }
 
+# For a case that needs variables in the *program's* environment: `--env "A=1 B=2"`
+# is word-split into the assignments `env` takes, so nothing leaks to the next case.
+run_env() {
+  local envs="$1"
+  shift
+  env $envs "$BEND" src/effects.bend -- "$@" > "$WORK/out" 2> "$WORK/err"
+  status=$?
+}
+
 # ── the cases ───────────────────────────────────────────────────────────────
 # `case_ok` names a case, runs the program with the arguments after `--`, and
 # asserts the exit code plus one substring of stdout. The command is echoed into
@@ -79,7 +101,11 @@ run_cfg() {
 case_ok() {
   local name="$1" want="$2" expect="$3"
   shift 3
-  local cfg=""
+  local cfg="" envs=""
+  if [ "$1" = "--env" ]; then
+    envs="$2"
+    shift 2
+  fi
   if [ "$1" = "--config" ]; then
     cfg="$2"
     shift 2
@@ -88,13 +114,17 @@ case_ok() {
   n=$((n + 1))
   {
     printf '\n## %d. %s\n' "$n" "$name"
-    if [ -n "$cfg" ]; then
+    if [ -n "$envs" ]; then
+      printf '$ %s bird %s\n' "$envs" "$*"
+    elif [ -n "$cfg" ]; then
       printf '$ BIRD_CONFIG=%s bird %s\n' "$cfg" "$*"
     else
       printf '$ bird %s\n' "$*"
     fi
   } >> "$OUT"
-  if [ -n "$cfg" ]; then
+  if [ -n "$envs" ]; then
+    run_env "$envs" "$@"
+  elif [ -n "$cfg" ]; then
     run_cfg "$cfg" "$@"
   else
     run "$@"
@@ -412,6 +442,40 @@ PY
     # after the count check above, because a failed upload sends nothing.
     case_ok "an attachment that is not there is a usage error" 2 '"id":"usage"' -- tweet --text hi --media "$WORK/missing.png" $LIVE_POST --json
     case_ok "...and it is not retryable" 2 '"retryable":false' -- tweet --text hi --media "$WORK/missing.png" $LIVE_POST --json
+
+    # The credential aliases. A shell that already talks to X exports
+    # TWITTER_AUTH_TOKEN and TWITTER_CT0, so those names are read when the BIRD_
+    # spelling is not set, and the BIRD_ spelling wins when both are. The envelope
+    # cannot show which one was used -- both report "environment" -- so the proof
+    # is the cookie the stand-in received.
+    LIVE_NOFLAGS="--web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:$LIVE_PORT/graphql --mentions-url http://127.0.0.1:$LIVE_PORT/mentions.json --media-upload-base http://127.0.0.1:$LIVE_PORT/media"
+    case_ok "the cookie names a shell already exports are read" 0 'bird hello' --env "TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0" -- mentions $LIVE_NOFLAGS --json
+    case_ok "...and BIRD_ wins when both spellings are set" 0 'bird hello' --env "TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 BIRD_AUTH_TOKEN=BIRD-AT BIRD_CT0=BIRD-CT0" -- mentions $LIVE_NOFLAGS --json
+    n=$((n + 1))
+    printf '\n## %d. the server received the credential each case asked for\n' "$n" >> "$OUT"
+    if python3 - "$WORK/live.log" > "$WORK/wirealias" 2>&1 <<'PY'
+import json, sys
+rows = [json.loads(line) for line in open(sys.argv[1])]
+mentions = [r for r in rows if r["path"].startswith("/mentions.json")]
+# The last two mentions reads are the alias cases, in the order they ran.
+alias, both = mentions[-2], mentions[-1]
+ok = (alias["cookie"] == "auth_token=ALIAS-AT; ct0=ALIAS-CT0"
+      and alias["csrf"] == "ALIAS-CT0"
+      and both["cookie"] == "auth_token=BIRD-AT; ct0=BIRD-CT0"
+      and both["csrf"] == "BIRD-CT0")
+print("alias only:", alias["cookie"], "|", alias["csrf"])
+print("both set:  ", both["cookie"], "|", both["csrf"])
+sys.exit(0 if ok else 1)
+PY
+    then
+      pass=$((pass + 1))
+      cat "$WORK/wirealias" >> "$OUT"
+      printf 'ok   %d. the server received the credential each case asked for\n' "$n" | tee -a "$OUT"
+    else
+      fail=$((fail + 1))
+      cat "$WORK/wirealias" >> "$OUT"
+      printf 'FAIL %d. the server received the credential each case asked for\n' "$n" | tee -a "$OUT"
+    fi
   fi
 fi
 

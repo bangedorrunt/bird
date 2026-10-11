@@ -275,37 +275,46 @@ def Effects.next(+step: D.Step) -> IO(U32):
 # setting has one spelling everywhere and `Cfg.order` looks all three sources up
 # the same way. `BIRD_JSON` is the exception that proves it: it is a switch, and
 # `OutMode.from` reads it by its own name.
-
+#
+# The two session cookies are the second exception. `TWITTER_AUTH_TOKEN` and
+# `TWITTER_CT0` are the names a shell that already talks to X exports, and they
+# are the names every guide example passes explicitly, so a run that ignored them
+# would report `auth` with the credential sitting right there in its own# environment. They are listed FIRST because `Items.str` takes the last match:
+# the fallback goes first so the `BIRD_` spelling wins when both are set.
 type EnvSpec is Data:
   EnvSpec{var: String, flag: String}
 
 # What one variable turned into, carried to the visit that absorbs it. The
-# answer is resolved to the flag and the text right here rather than carried as
-# a `Result`, because a `Result` is linear and a record field must be `Data`.
+# answer is resolved to the flag and the text right here rather than carried as a
+# `Result`, because a `Result` is linear and a record field must be `Data`.
 type EnvDone is Data:
   EnvNone{}
   EnvTaken{flag: String, value: String}
 
 def Effects.specs() -> List<&2, EnvSpec>:
-  EnvSpec{"BIRD_JSON", "BIRD_JSON"} <> (
-    EnvSpec{"BIRD_AUTH_TOKEN", "--auth-token"} <> (
-      EnvSpec{"BIRD_CT0", "--ct0"} <> (
-        EnvSpec{"BIRD_ENGINE", "--engine"} <> (
-          EnvSpec{"BIRD_COUNT", "--count"} <> (
-            EnvSpec{"BIRD_TIMEOUT_MS", "--timeout-ms"} <> (
-              EnvSpec{"BIRD_FIXTURE", "--fixture"} <> (
-                EnvSpec{"BIRD_TEXT_FILE", "--text-file"} <> (
-                  EnvSpec{"BIRD_SWEETISTICS_API_KEY", "--sweetistics-api-key"} <> (
-                    EnvSpec{"BIRD_SWEETISTICS_BASE_URL", "--sweetistics-base-url"} <> (
-                      EnvSpec{"BIRD_WEB_BEARER", "--web-bearer"} <> (
-                        EnvSpec{"BIRD_GQL_FEATURES", "--gql-features"} <> (
-                          EnvSpec{"BIRD_OP_CREATE_TWEET", "--op-create-tweet"} <> (
-                            EnvSpec{"BIRD_OP_TWEET_DETAIL", "--op-tweet-detail"} <> (
-                              EnvSpec{"BIRD_OP_SEARCH", "--op-search"} <> (
-                                EnvSpec{"BIRD_OP_VIEWER", "--op-viewer"} <> (
-                                  EnvSpec{"BIRD_MEDIA_UPLOAD_BASE", "--media-upload-base"} <> (
-                                    EnvSpec{"BIRD_GQL_BASE", "--gql-base"} <> (
-                                      EnvSpec{"BIRD_MENTIONS_URL", "--mentions-url"} <> Nil{}
+  EnvSpec{"TWITTER_AUTH_TOKEN", "--auth-token"} <> (
+    EnvSpec{"TWITTER_CT0", "--ct0"} <> (
+      EnvSpec{"BIRD_JSON", "BIRD_JSON"} <> (
+        EnvSpec{"BIRD_AUTH_TOKEN", "--auth-token"} <> (
+          EnvSpec{"BIRD_CT0", "--ct0"} <> (
+            EnvSpec{"BIRD_ENGINE", "--engine"} <> (
+              EnvSpec{"BIRD_COUNT", "--count"} <> (
+                EnvSpec{"BIRD_TIMEOUT_MS", "--timeout-ms"} <> (
+                  EnvSpec{"BIRD_FIXTURE", "--fixture"} <> (
+                    EnvSpec{"BIRD_TEXT_FILE", "--text-file"} <> (
+                      EnvSpec{"BIRD_SWEETISTICS_API_KEY", "--sweetistics-api-key"} <> (
+                        EnvSpec{"BIRD_SWEETISTICS_BASE_URL", "--sweetistics-base-url"} <> (
+                          EnvSpec{"BIRD_WEB_BEARER", "--web-bearer"} <> (
+                            EnvSpec{"BIRD_GQL_FEATURES", "--gql-features"} <> (
+                              EnvSpec{"BIRD_OP_CREATE_TWEET", "--op-create-tweet"} <> (
+                                EnvSpec{"BIRD_OP_TWEET_DETAIL", "--op-tweet-detail"} <> (
+                                  EnvSpec{"BIRD_OP_SEARCH", "--op-search"} <> (
+                                    EnvSpec{"BIRD_OP_VIEWER", "--op-viewer"} <> (
+                                      EnvSpec{"BIRD_MEDIA_UPLOAD_BASE", "--media-upload-base"} <> (
+                                        EnvSpec{"BIRD_GQL_BASE", "--gql-base"} <> (
+                                          EnvSpec{"BIRD_MENTIONS_URL", "--mentions-url"} <> Nil{}
+                                        )
+                                      )
                                     )
                                   )
                                 )

@@ -31,7 +31,7 @@ writing, media, reading, mentions, and the contract an agent sees.
 | `src/effects.bend` | The interpreter, and the only place IO happens: argv, environment, file reads, `curl`, printing, and `main`. |
 | `LAWS.bend` / `PROOF.bend` | Nine laws and their proofs. |
 | `tests/*_test.bend` | Five runnable programs, 249 cases, each dying with a nonzero exit on the first failure. |
-| `tests/e2e.sh` | The real command line, 67 cases, writing `tests/e2e_artifact.txt`. |
+| `tests/e2e.sh` | The real command line, 70 cases, writing `tests/e2e_artifact.txt`. |
 | `tests/live_server.py` | A stand-in backend so the transport can be exercised over a real socket without reaching X: the four operations, the media service and the mentions timeline. |
 | `CHANGELOG.md` | Release notes, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. `bird version` prints the version the log's newest entry names. |
 
@@ -54,7 +54,7 @@ install -m 0755 bird ~/.local/bin/bird       # then: bird read 12345 --json
 ```sh
 bend PROOF.bend            # ALL PROOFS CHECK, or SOME PROOFS FAIL
 bend src/effects.bend --check-only
-bash tests/e2e.sh          # 67 cases against the real command line
+bash tests/e2e.sh          # 70 cases against the real command line
 bend tests/json_test.bend    # 25 cases
 bend tests/argv_test.bend    # 46 cases
 bend tests/http_test.bend    # 29 cases

@@ -112,6 +112,11 @@ class Handler(BaseHTTPRequestHandler):
                 "path": self.path,
                 "content_type": self.headers.get("content-type"),
                 "authorization": self.headers.get("authorization"),
+                # The session cookie and the csrf token are logged because which
+                # credential a run picked is only observable on the wire: the
+                # envelope says "environment" whichever name supplied it.
+                "cookie": self.headers.get("cookie"),
+                "csrf": self.headers.get("x-csrf-token"),
                 "accept": self.headers.get("accept"),
                 "body": body,
                 "body_len": length,

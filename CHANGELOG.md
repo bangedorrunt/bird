@@ -10,6 +10,19 @@ log starts at `0.3.0`.
 
 ## [Unreleased]
 
+### Added
+
+- The two session cookies are also read from `TWITTER_AUTH_TOKEN` and
+  `TWITTER_CT0`, the names a shell that already talks to X exports. Both spellings
+  work and neither is deprecated; when both are set, `BIRD_AUTH_TOKEN`/`BIRD_CT0`
+  wins, so one extra variable overrides an inherited shell value.
+
+### Fixed
+
+- `tests/e2e.sh` now clears every environment name the program reads before the
+  first case. A shell that exports a real session would otherwise let the
+  "no credentials" case find it and reach X.
+
 ## [0.3.0] - 2026-10-11
 
 ### Added

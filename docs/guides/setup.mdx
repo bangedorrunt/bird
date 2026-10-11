@@ -75,6 +75,22 @@ would answer, where the credentials came from, and the request timeout.
 3. the config file, then
 4. the built-in default.
 
+The two session cookies are the one setting with a second name. `TWITTER_AUTH_TOKEN`
+and `TWITTER_CT0` are also read, because that is what a shell that already talks
+to X exports and what the examples above use:
+
+```sh
+# both work, and neither is deprecated; setting both is not a conflict
+export TWITTER_AUTH_TOKEN=... TWITTER_CT0=...     # read
+bird mentions --json                              # uses them
+export BIRD_AUTH_TOKEN=... BIRD_CT0=...           # also read, and these win
+```
+
+When both spellings are set the `BIRD_` one is used, so a run that wants to
+override an inherited shell value only has to set one more variable. Naming a
+cookie at all is the same as passing `--auth-token`/`--ct0`: a session is then
+the credential for every verb that needs one.
+
 The config file is named by `BIRD_CONFIG` and is a JSON object whose keys are
 flag names:
 
