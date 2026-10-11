@@ -12,6 +12,29 @@ log starts at `0.3.0`.
 
 ### Added
 
+- **A read answers with the tweet, not with the envelope it arrived in.** X wraps
+  one tweet in about 119 KB of timeline entry ids, cursors, the author's whole
+  profile blob and the client's feature flags, with the text six levels down
+  inside it. `src/tweets.bend` is that walk, done once in the pure core, and
+  `read`, `replies`, `thread`, `search`, `mentions` and `whoami` all answer with
+  one shape: `data.tweets[]` of `id`, `text`, `lang`, `created_at`, `author`
+  (`id`, `handle`, `name`, `verified`, `avatar`), `metrics`, `media`, `urls`,
+  `quoted` and `in_reply_to`, with a count X did not send as `null` rather than
+  `0`. `read` narrows to the tweet that was asked for; a long post answers with
+  the `note_tweet` text rather than the truncated line beside it; a quoted tweet
+  is one level deep. The three response shapes it reads — GraphQL timelines, the
+  notifications endpoint's top-level v1.1 tweets with their authors in a map
+  beside them, and `whoami`'s viewer — are described in `src/tweets.bend`.
+- **`--raw`**: answers with the body X sent, unwrapped and untouched, for the
+  times the fold has thrown away something a caller wanted. It is the only way to
+  see the envelope again.
+- **A terminal gets the tweets.** A read printed as indented JSON answered a
+  terminal with brackets and quotes around the two things the reader came for, so
+  each tweet is now one block: the head, the text, one line per attachment, the
+  quote, the reply target, and a last line of the id and the counts X sent. A
+  field X did not send drops out of its line instead of leaving an empty slot, an
+  answer holding no tweet says `no tweets`, and every other payload keeps the
+  indent rendering.
 - `scripts/check-beads-ledger.sh`: fails closed on a beads-ledger row-set
   regression before `.beads/` is committed. `.beads/issues.jsonl` is a
   full-snapshot export, so a worktree writing it from its own older sqlite drops
@@ -47,6 +70,11 @@ log starts at `0.3.0`.
 
 ### Fixed
 
+- A mentions entry carrying no `id_str` answered an empty timeline. A tweet was
+  recognised by `id_str` beside a top-level `full_text`, but the map key is also
+  the id and a real answer can leave the field out — so the walk dropped every
+  mention over a field it does not need. The text at the top level is what marks
+  the shape now, and the id is read from `id_str` when X sent it.
 - `bird login` with no `--settings-path` failed on a fresh machine: the default is
   `$HOME/.config/bird/settings.json`, and opening it where that directory has never
   been made reports the OS's own "no such file or directory", which names the file

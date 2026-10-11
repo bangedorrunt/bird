@@ -377,6 +377,23 @@ def creds() -> List<&2, String>:
 def whoami_args() -> List<&2, String>:
   "whoami" <> ("--op-viewer" <> ("OPV" <> creds()))
 
+# `read` in three spellings: the id, a url that carries the id, and one that X
+# will not have a tweet for. The `--raw` one asks for the envelope back.
+def read_args() -> List<&2, String>:
+  "read" <> ("12345" <> ("--op-tweet-detail" <> ("OPTD" <> creds())))
+
+def read_url_args() -> List<&2, String>:
+  "read" <> ("https://x.com/bird/status/12345" <> ("--op-tweet-detail" <> ("OPTD" <> creds())))
+
+def read_absent_args() -> List<&2, String>:
+  "read" <> ("999" <> ("--op-tweet-detail" <> ("OPTD" <> creds())))
+
+def read_raw_args() -> List<&2, String>:
+  "read" <> ("12345" <> ("--raw" <> ("--op-tweet-detail" <> ("OPTD" <> creds()))))
+
+def whoami_raw_args() -> List<&2, String>:
+  "whoami" <> ("--raw" <> ("--op-viewer" <> ("OPV" <> creds())))
+
 def search_args() -> List<&2, String>:
   "search" <> ("hi" <> creds())
 
@@ -407,8 +424,22 @@ def reply_no_id_args() -> List<&2, String>:
 def read_share_url_args() -> List<&2, String>:
   "read" <> ("https://x.com/u/status/99887766?s=20&t=abc" <> creds())
 
+# The viewer answer, in the shape a live one has: the profile is under
+# `user_results.result`, the handle under its `core`, and X wraps the whole thing
+# in `data`. A body with `screen_name` at the top would be a body X never sends.
 def viewer_body() -> String:
-  "{\"data\":{\"viewer\":{\"screen_name\":\"bird\"}}}"
+  "{\"data\":{\"viewer\":{\"user_results\":{\"result\":{\"rest_id\":\"1\",\"is_blue_verified\":true,\"core\":{\"screen_name\":\"bird\",\"name\":\"Bird\"}}}}}}"
+
+# A TweetDetail answer for tweet 12345: the tweet, a quote of it, and a second
+# tweet beside it, wrapped in the entry list X sends. Only the tweet that was
+# asked for is the answer, so the count in the payload is a real assertion.
+# The v2 notifications shape, small: the tweet's fields at the top level and the
+# author in a map beside it, keyed by the tweet's `user_id_str`.
+def mentions_fixture() -> String:
+  "{\"globalObjects\":{\"tweets\":{\"300\":{\"id_str\":\"300\",\"full_text\":\"a mention\",\"user_id_str\":\"42\",\"favorite_count\":9}},\"users\":{\"42\":{\"id_str\":\"42\",\"screen_name\":\"mentioneer\",\"name\":\"Mentioned\"}}}}"
+
+def tweet_body() -> String:
+  "{\"data\":{\"tweetResult\":{\"result\":{\"rest_id\":\"12345\",\"legacy\":{\"full_text\":\"a fixture tweet\",\"id_str\":\"12345\",\"lang\":\"en\",\"created_at\":\"Sat Oct 10 00:00:00 +0000 2026\",\"user_id_str\":\"77\"},\"core\":{\"user_results\":{\"result\":{\"rest_id\":\"77\",\"core\":{\"screen_name\":\"bird\",\"name\":\"Bird\"}}}}}},\"other\":{\"result\":{\"rest_id\":\"54321\",\"legacy\":{\"full_text\":\"a neighbour tweet\",\"id_str\":\"54321\"},\"core\":{\"user_results\":{\"result\":{\"rest_id\":\"88\",\"core\":{\"screen_name\":\"neighbour\",\"name\":\"Neighbour\"}}}}}}}}"
 
 # ── the arguments and documents the login scenarios use ─────────────────
 
@@ -479,9 +510,33 @@ def main() -> IO(Unit):
     # ── 2. the answer lands ────────────────────────────────────────────
     +s2 : D.Step = answer(7, 0, 200, viewer_body(), SNil{}, model_of(s1))
     ok("an answer for the open request ends the run", String.eq(phase_tag(s2), "done"))
-    ok("...with the body's data as the payload", String.contains(text_in_step(s2), "screen_name"))
+    ok("...with the profile the caller asked for, not the envelope", String.contains(text_in_step(s2), "\"handle\":\"bird\""))
+    ok("...and none of X's own wrapper left in it", Bool.not(String.contains(text_in_step(s2), "user_results")))
     ok("...status 200, exit 0", U32.is_eq(status_of(model_of(s2)), 200))
     ok("...and the reason it is over is the answer's", U32.is_eq(exit_of(model_of(s2)), 0))
+
+    # ── 2b. a read answers with the tweets in it, and --raw with X's ──
+    +r1 : D.Step = boot(read_args(), SNil{})
+    +r2 : D.Step = answer(7, 0, 200, tweet_body(), SNil{}, model_of(r1))
+    ok("a read ends with the tweet it asked for", String.contains(text_in_step(r2), "\"id\":\"12345\""))
+    ok("...carrying its text", String.contains(text_in_step(r2), "\"text\":\"a fixture tweet\""))
+    ok("...and its author", String.contains(text_in_step(r2), "\"handle\":\"bird\""))
+    ok("...and not the tweet X put beside it", Bool.not(String.contains(text_in_step(r2), "a neighbour tweet")))
+    ok("...nor the envelope it came in", Bool.not(String.contains(text_in_step(r2), "tweetResult")))
+    ok("...and the run still ends 200 and 0", U32.is_eq(U32.add(status_of(model_of(r2)), exit_of(model_of(r2))), 200))
+    +u1 : D.Step = boot(read_url_args(), SNil{})
+    +u2 : D.Step = answer(7, 0, 200, tweet_body(), SNil{}, model_of(u1))
+    ok("a url target is read down to the id it carries", String.contains(text_in_step(u2), "\"id\":\"12345\""))
+    +a1 : D.Step = boot(read_absent_args(), SNil{})
+    +a2 : D.Step = answer(7, 0, 200, tweet_body(), SNil{}, model_of(a1))
+    ok("a read of a tweet X did not send answers with no tweets", String.contains(text_in_step(a2), "\"tweets\":[]"))
+    +w1 : D.Step = boot(read_raw_args(), SNil{})
+    +w2 : D.Step = answer(7, 0, 200, tweet_body(), SNil{}, model_of(w1))
+    ok("--raw keeps the envelope X sent", String.contains(text_in_step(w2), "tweetResult"))
+    ok("...down to the tweet beside the one asked for", String.contains(text_in_step(w2), "a neighbour tweet"))
+    +w3 : D.Step = boot(whoami_raw_args(), SNil{})
+    +w4 : D.Step = answer(7, 0, 200, viewer_body(), SNil{}, model_of(w3))
+    ok("--raw keeps a profile in X's wrapper too", String.contains(text_in_step(w4), "screen_name"))
 
     # ── 3. an answer for another request is ignored ────────────────────
     s3 : D.Step = answer(9, 0, 200, "{}", SNil{}, model_of(s1))
@@ -571,13 +626,19 @@ def main() -> IO(Unit):
     ok("...without asking for anything", U32.is_eq(http_count(cmds_of(k1), 0), 0))
 
     # ── 16. a fixture answers through the answer path ──────────────────
+    # A fixture goes through the same fold as a live answer, so it is folded the
+    # same way: a search whose body holds no tweet answers with an empty list.
     +f1 : D.Step = boot("search" <> ("hi" <> ("--fixture" <> ("fx.json" <> Nil{}))), SNil{})
     ok("a fixture is read, and needs no credentials", U32.is_eq(read_count(cmds_of(f1), 0), 1))
     +f2 : D.Step = file_turn(True{}, 3, "fx.json", "fixture", "{\"data\":{\"x\":1}}", model_of(f1))
     ok("the fixture answers instead of the network", U32.is_eq(http_count(cmds_of(f2), 0), 0))
     ok("...through the same path an answer takes", String.eq(phase_tag(f2), "done"))
     ok("...with status 200", U32.is_eq(status_of(model_of(f2)), 200))
-    ok("...and its body as the payload", String.contains(text_in_step(f2), "\"x\":1"))
+    ok("...and the tweets in it as the payload", String.contains(text_in_step(f2), "\"tweets\":[]"))
+    +f3 : D.Step = boot("search" <> ("hi" <> ("--fixture" <> ("fx.json" <> Nil{}))), SNil{})
+    +f4 : D.Step = file_turn(True{}, 3, "fx.json", "fixture", mentions_fixture(), model_of(f3))
+    ok("a fixture with a tweet in it is folded like a live answer", String.contains(text_in_step(f4), "\"text\":\"a mention\""))
+    ok("...and its author comes from the map beside it", String.contains(text_in_step(f4), "\"handle\":\"mentioneer\""))
 
     # ── 17. the two credential failures ───────────────────────────────
     +a1 : D.Step = boot("whoami" <> Nil{}, SNil{})

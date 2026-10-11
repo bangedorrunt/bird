@@ -279,6 +279,13 @@ case_ok "a search count is clamped to fifty" 0 '\"count\":50' -- search rust --c
 # ── a fixture answers through the same fold as a live response ──────────────
 case_ok "a fixture is the body, not the path that named it" 0 'a fixture tweet' -- read 12345 --fixture "$WORK/tweet.json" --json
 case_ok "a fixture answers with the status a real 200 would" 0 '"status":200' -- read 12345 --fixture "$WORK/tweet.json" --json
+# The fold is the whole point of a read: what comes out is the tweet, not the
+# 119 KB of X's bookkeeping it arrived in. `tweet_results` is the key the text was
+# buried under and a `data` inside `data` is the envelope arriving undigested, so
+# naming the payload's own keys is what separates the two.
+case_ok "a read answers with the tweet, not with X's envelope" 0 '"tweets":[{"id":"12345","text":"a fixture tweet"' -- read 12345 --fixture "$WORK/tweet.json" --json
+case_ok_not "...and none of the envelope is left in it" 0 'tweet_results' -- read 12345 --fixture "$WORK/tweet.json" --json
+case_ok "--raw is the way to see the envelope again" 0 '"data":{"data":{"tweetResult"' -- read 12345 --fixture "$WORK/tweet.json" --raw --json
 case_ok "a text file supplies the text when the command line does not" 0 'hello from a file' -- tweet --text-file "$WORK/text.txt" $CREDS --dry-run --json
 case_ok "the command line beats the text file" 0 'explicit' -- tweet --text explicit --text-file "$WORK/text.txt" $CREDS --dry-run --json
 
@@ -510,6 +517,12 @@ PY
       printf 'FAIL %d. the server received the credential each case asked for\n' "$n" | tee -a "$OUT"
     fi
 
+    # The mentions shape is the one an author has to be looked up for: the tweet
+    # has no author in it and the handle lives in a map beside it, keyed by the
+    # tweet's own `user_id_str`. The text alone would pass without that lookup, so
+    # the handle is what proves the fold read this shape and not just the tweet.
+    case_ok "a mentions answer carries the author from the map beside it" 0 '"handle":"bird_mentions_probe"' -- mentions $LIVE_POST --json
+
     # ── login: the browser's session, the bundle's constants, the cache ─────
     #
     # This is the only place the Chrome recipe runs for real: sqlite3 reads a
@@ -590,7 +603,7 @@ fi
 if script -q /dev/null true >/dev/null 2>&1; then
   n=$((n + 1))
   {
-    printf '\n## %d. %s\n' "$n" "on a terminal a read is indented data, not an envelope"
+    printf '\n## %d. %s\n' "$n" "on a terminal a read is the tweet, not the envelope"
     printf '$ TERM=xterm bird read 12345 --fixture <fixture>\n'
   } >> "$OUT"
   # Without TERM the pty changes nothing -- which is the limitation the program's
@@ -598,15 +611,35 @@ if script -q /dev/null true >/dev/null 2>&1; then
   TERM=xterm script -q /dev/null "$BEND" src/effects.bend -- read 12345 --fixture "$WORK/tweet.json" > "$WORK/out" 2>&1
   status=$?
   { printf 'exit %s\n' "$status"; cat "$WORK/out"; } >> "$OUT"
-  if [ "$status" = "0" ] && grep -Fq 'a fixture tweet' "$WORK/out" && ! grep -Fq '"ok":true' "$WORK/out"; then
+  # Both halves matter: the tweet as a block rather than as JSON (no `"ok":true`
+  # envelope, and the id on a line of its own), because the terminal rendering is
+  # what a person who never passes `--json` actually reads.
+  if [ "$status" = "0" ] && grep -Fq 'a fixture tweet' "$WORK/out" \
+     && grep -Fq 'id 12345' "$WORK/out" && ! grep -Fq '"ok":true' "$WORK/out"; then
     pass=$((pass + 1))
-    printf 'ok   %d. on a terminal a read is indented data, not an envelope\n' "$n" | tee -a "$OUT"
+    printf 'ok   %d. on a terminal a read is the tweet, not the envelope\n' "$n" | tee -a "$OUT"
   else
     fail=$((fail + 1))
-    printf 'FAIL %d. on a terminal a read is indented data, not an envelope\n' "$n" | tee -a "$OUT"
+    printf 'FAIL %d. on a terminal a read is the tweet, not the envelope\n' "$n" | tee -a "$OUT"
+  fi
+  n=$((n + 1))
+  {
+    printf '\n## %d. %s\n' "$n" "a terminal says so when the answer holds no tweet"
+    printf '$ TERM=xterm bird read 999 --fixture <fixture>\n'
+  } >> "$OUT"
+  TERM=xterm script -q /dev/null "$BEND" src/effects.bend -- read 999 --fixture "$WORK/tweet.json" > "$WORK/out" 2>&1
+  status=$?
+  { printf 'exit %s\n' "$status"; cat "$WORK/out"; } >> "$OUT"
+  if [ "$status" = "0" ] && grep -Fq 'no tweets' "$WORK/out"; then
+    pass=$((pass + 1))
+    printf 'ok   %d. a terminal says so when the answer holds no tweet\n' "$n" | tee -a "$OUT"
+  else
+    fail=$((fail + 1))
+    printf 'FAIL %d. a terminal says so when the answer holds no tweet\n' "$n" | tee -a "$OUT"
   fi
 else
-  case_skip "on a terminal a read is indented data, not an envelope" "no pty helper (script) available"
+  case_skip "on a terminal a read is the tweet, not the envelope" "no pty helper (script) available"
+  case_skip "a terminal says so when the answer holds no tweet" "no pty helper (script) available"
 fi
 
 # ── the guides name only flags this build has ───────────────────────────────

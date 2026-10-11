@@ -56,9 +56,12 @@ PORTOUT = sys.argv[3] if len(sys.argv) > 3 else None
 # status off the end of it walked one character per stack frame. A route that
 # answers with something this big is what keeps that from coming back.
 def big_body() -> str:
-    entry = {"content": {"itemContent": {"tweet_results": {"result": {"legacy": {
-        "full_text": "padding, so the body is the size a real thread is and not an id",
-        "id_str": "900001"}}}}}}
+    # `rest_id` is what makes this a tweet rather than bytes: without it the fold
+    # has nothing to collect and a 300 KB body would exercise the walk not at all.
+    entry = {"content": {"itemContent": {"tweet_results": {"result": {
+        "rest_id": "900001", "legacy": {
+            "full_text": "padding, so the body is the size a real thread is and not an id",
+            "id_str": "900001"}}}}}}
     entries = [entry for _ in range(1200)]
     payload = {"data": {"threaded_conversation_with_injections_v2": {
         "instructions": [{"entries": entries}]}}}
@@ -84,9 +87,17 @@ BODIES = {
                                     '{"data":{"create_tweet":{"tweet_results":{"result":'
                                     '{"rest_id":"5150","legacy":{"full_text":"media live"}}}}}}'),
     # The mentions timeline: a REST read, so it is a GET with the count in the
-    # query string rather than a variable in a body.
+    # query string rather than a variable in a body. The tweet keeps its fields at
+    # the top level, and its author is NOT in it: the author is a separate entry in
+    # `globalObjects.users`, keyed by the tweet's `user_id_str`. That lookup beside
+    # the tweet is the one thing this shape needs that the GraphQL one does not, so
+    # the stand-in has to carry it or the case proves nothing about it.
     "/mentions.json": (200, "application/json",
-                       '{"globalObjects":{"tweets":{"11":{"full_text":"@bird hello"}}},'
+                       '{"globalObjects":{"tweets":{"11":{"id_str":"11",'
+                       '"full_text":"@bird hello","user_id_str":"55",'
+                       '"created_at":"Sat Oct 11 00:00:00 +0000 2026"}},'
+                       '"users":{"55":{"id_str":"55","screen_name":"bird_mentions_probe",'
+                       '"name":"Bird Mentions Probe"}}},'
                        '"timeline":{"instructions":[]}}'),
 }
 

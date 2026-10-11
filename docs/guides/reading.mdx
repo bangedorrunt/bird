@@ -68,20 +68,75 @@ the item list rather than the verb, so it counts whether it was written before o
 after the verb it belongs to — and a value the program cannot read is refused
 rather than quietly replaced by the default.
 
-## The rendering
+## What a read answers with
 
-A terminal gets the payload indented, with X's `data` member unwrapped, because
-that member is what a reader wants and the envelope around it is X's business. A
-script should ask for the envelope instead of hoping the rendering was guessed
-right:
-
-```sh
-bird read 1234567890 … --json | jq -r '.data.data.tweetResult.result.legacy.full_text'
-```
+X wraps one tweet in about 119 KB of its own bookkeeping — timeline entry ids,
+cursors, display options, the author's whole profile blob, the client's feature
+flags — and the text sits six levels down inside it. That walk happens once, in
+`src/tweets.bend`, so a read answers with the tweets rather than with the
+envelope they arrived in:
 
 ```json
-{"ok":true,"verb":"read","status":200,"data":{"data":{"tweetResult":{"result":{"rest_id":"1234567890","legacy":{"full_text":"a tweet","id_str":"1234567890"}}}}},"notes":[]}
+{"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"1234567890","text":"a tweet","lang":"en","created_at":"Sat Oct 10 00:00:00 +0000 2026","author":{"id":"77","handle":"someone","name":"Some One","verified":false,"avatar":"https://pbs.twimg.com/profile_images/x_normal.jpg"},"metrics":{"replies":3,"retweets":4,"likes":5,"quotes":6,"bookmarks":7,"views":12345},"media":[{"type":"photo","url":"https://pbs.twimg.com/media/one.jpg","alt":null}],"urls":[],"quoted":null,"in_reply_to":null}]},"notes":[]}
 ```
+
+| field | what it holds |
+| --- | --- |
+| `id` | The tweet's id. |
+| `text` | The whole text. A long post answers with the text from `note_tweet`, not the truncated line X puts beside it. |
+| `lang`, `created_at` | The language and the timestamp; `null` when the response did not carry one. |
+| `author` | `id`, `handle`, `name`, `verified`, `avatar`; `null` when there is no author to find. |
+| `metrics` | `replies`, `retweets`, `likes`, `quotes`, `bookmarks`, `views`. A count X did not send is `null`, which is not the same answer as `0`. |
+| `media` | One entry per attachment: `type`, `url`, `alt`. |
+| `urls` | One entry per link: `url`, `expanded`, `display`. |
+| `quoted` | The quoted tweet, in this same shape, one level deep. A quote of a quote is not followed. |
+| `in_reply_to` | The id of the tweet this one answers, `null` when it answers none. |
+
+```sh
+bird search rust --count 5 … --json | jq -r '.data.tweets[].text'
+bird read 1234567890 … --json | jq -r '.data.tweets[0].author.handle'
+```
+
+`read` asked for one tweet and X answers with the conversation around it, so it
+keeps the tweet that was asked for. `replies`, `thread`, `search` and `mentions`
+asked for a list and keep every tweet X sent, in X's order. `whoami` answers with
+one profile in the same spirit (`id`, `handle`, `name`, `verified`, `avatar`,
+`bio`, `followers`, `following`, `tweets`, `location`, `created_at`).
+
+## A terminal gets the tweets
+
+A person at a terminal never passes `--json`, and a wall of braces is not what a
+terminal is for. So the tweets are printed as one block each: the head, the text,
+one line per attachment, the quote, the reply target, and a last line of the id
+and the counts X sent.
+
+```sh
+bird read 1234567890 …
+```
+
+```
+@replier · A Replier · Sat Oct 10 00:00:00 +0000 2026
+the whole long post
+media photo https://pbs.twimg.com/media/one.jpg alt: alt one
+quoting @quoted: the quoted tweet
+in reply to 199
+id 200 · replies 3 · retweets 4 · likes 5 · quotes 6 · bookmarks 7 · views 12345
+```
+
+A field X did not send drops out of its line rather than leaving an empty slot,
+and an answer holding no tweet says `no tweets` instead of printing nothing.
+
+## Seeing the envelope again
+
+`--raw` is the way back to the body X sent, for the times the fold has thrown away
+something you wanted:
+
+```sh
+bird read 1234567890 … --json --raw | jq -r '.data.data.tweetResult.result.legacy.full_text'
+```
+
+Two `data`s there: the outer one is the envelope's payload, the inner one is X's
+own.
 
 ## Answering without a network
 

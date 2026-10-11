@@ -528,6 +528,18 @@ def is_obj(j: Json) -> Bool:
     case _:
       False{}
 
+# An array, empty or not. `is_arr_end` is also true of anything that is not an
+# array -- that is how a missing path reads as an empty list -- so a caller that
+# has to tell `[]` from `null` needs this rather than that.
+def is_arr(j: Json) -> Bool:
+  match j:
+    case JsonArr{head, tail}:
+      True{}
+    case JsonArrEnd{}:
+      True{}
+    case _:
+      False{}
+
 # `JsonArrEnd{}` is also the answer for "not an array at all", which keeps a
 # missing path and an empty array distinguishable by length.
 def arr_tail(j: Json) -> Json:

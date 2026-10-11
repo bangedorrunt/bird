@@ -66,11 +66,21 @@ number at all is refused by name with exit code `2`.
 
 ## The answer
 
-The payload is the timeline as X sends it. The envelope wraps it:
+The timeline arrives in the other shape X has: the tweet's own fields are at the
+top level rather than under `legacy`, and the author is not in the tweet at all —
+it is a separate entry in `globalObjects.users`, keyed by the tweet's
+`user_id_str`. The fold reads both, so a mention comes back in the same shape as
+a tweet from `read`:
 
 ```json
-{"ok":true,"verb":"mentions","status":200,"data":{"globalObjects":{"tweets":{"11":{"full_text":"@bird hello"}}},"timeline":{"instructions":[]}},"notes":[]}
+{"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null}]},"notes":[]}
 ```
 
-A terminal prints the `globalObjects` data indented instead; `--json` is what a
-script should pass.
+The fields, and what each is when X did not send it, are in
+[Reading](./reading.mdx). At a terminal each tweet is one block instead:
+
+```
+@bird_mentions_probe · Bird Mentions Probe · Sat Oct 11 00:00:00 +0000 2026
+@bird hello
+id 11
+```

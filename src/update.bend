@@ -7,6 +7,7 @@ import ./api.bend as Api
 import ./http.bend as H
 import ./bundle.bend as B
 import ./cookies.bend as C
+import ./tweets.bend as T
 
 # The fold. One message in, the new model and the effects to run next out. No IO
 # anywhere, so a test plays a whole run by handing it scripted messages in the
@@ -315,10 +316,51 @@ def Update.media_fail_notes(+m: D.Model, +stderr: String) -> List<&2, String>:
 def Update.not_json(message: String, +stderr: String) -> List<&2, String>:
   ("the response body is not JSON: " ++ message) <> Update.notes_ok(stderr)
 
+# ── what a read verb answers with ───────────────────────────────────────
+#
+# X answers one tweet with about 119 KB of its own bookkeeping -- timeline entry
+# ids, cursors, display options, the author's whole profile blob, the client's
+# feature flags -- and the text six levels down inside it. The fold is the one
+# place where a response becomes the model's payload, so it is the one place that
+# folds the envelope into tweets: a renderer then knows nothing about X's layout,
+# and `--raw` is the only way to see the envelope again.
+#
+# `read` asked for one tweet and X answers with the conversation around it, so it
+# narrows to the tweet that was asked for. The other read verbs asked for a list
+# and keep every tweet X sent, in the order X sent them, the focal tweet among
+# them. Anything else -- a write, a media upload, a login step -- is untouched.
+
+def Update.raw_mode(+m: D.Model) -> Bool:
+  D.Items.has_flag(Update.items_in(Update.start_of(m)), "--raw")
+
+def Update.shaped_verb(+v: D.Verb, +root: J.Json) -> J.Json:
+  match v:
+    case D.VerbRead{target}:
+      T.Tweets.list_in(root, P.TweetId.of(target))
+    case D.VerbReplies{target}:
+      T.Tweets.list_in(root, SNil{})
+    case D.VerbThread{target}:
+      T.Tweets.list_in(root, SNil{})
+    case D.VerbSearch{query, count}:
+      T.Tweets.list_in(root, SNil{})
+    case D.VerbMentions{count}:
+      T.Tweets.list_in(root, SNil{})
+    case D.VerbWhoami{}:
+      T.Tweets.profile_in(root)
+    case _:
+      root
+
+def Update.shaped_on(raw: Bool, +m: D.Model, +root: J.Json) -> J.Json:
+  match raw:
+    case True{}:
+      root
+    case False{}:
+      Update.shaped_verb(Update.verb_of(m), root)
+
 def Update.parsed(+m: D.Model, +p: J.Parsed, http_status: U32, body: String, stderr: String) -> D.Step:
   match p:
     case J.ParsedOk{value}:
-      D.mk_step(D.Model.answered(m, http_status, value, body, Update.notes_ok(stderr)), D.no_cmds())
+      D.mk_step(D.Model.answered(m, http_status, Update.shaped_on(Update.raw_mode(m), m, value), body, Update.notes_ok(stderr)), D.no_cmds())
     case J.ParsedErr{message}:
       D.mk_step(D.Model.answered(m, http_status, J.null(), body, Update.not_json(message, stderr)), D.no_cmds())
 

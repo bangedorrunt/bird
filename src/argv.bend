@@ -149,6 +149,8 @@ def Argv.kind_of(name: String) -> FlagKind:
       FkAlt{}
     case "--json":
       FkSwitch{}
+    case "--raw":
+      FkSwitch{}
     case "--dry-run":
       FkSwitch{}
     case "--text":
@@ -208,6 +210,7 @@ def Argv.kind_of(name: String) -> FlagKind:
 # so the help text cannot advertise a flag the parser refuses.
 def Argv.flag_names() -> List<&2, String>:
   "--json" <> (
+    "--raw" <> (
     "--dry-run" <> (
       "--text" <> (
         "--text-file" <> (
@@ -264,6 +267,7 @@ def Argv.flag_names() -> List<&2, String>:
       )
     )
   )
+)
 def Argv.verb_of(word: String) -> Maybe<&2, D.Verb>:
   match word:
     case "tweet":
@@ -616,6 +620,7 @@ def Argv.help_text() -> String:
   ++ "  --web-home <url>                    login: the page whose bundle names the bearer and ids\n"
   ++ "  --bundle-base <url>                 login: where the client bundle is served from\n"
   ++ "  --settings-path <path>              where the settings cache lives\n"
+  ++ "  --raw                               the response as X sent it, unfolded\n"
   ++ "  --json                              one json envelope on stdout\n"
   ++ "  --dry-run                           describe the request, send nothing\n"
   ++ "  --timeout-ms <n>                    per-request timeout, 1000..120000\n\n"

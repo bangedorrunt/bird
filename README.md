@@ -21,6 +21,7 @@ writing, media, reading, mentions, and the contract an agent sees.
 | | |
 |---|---|
 | `src/json.bend` | JSON: a lossless encoder, a stack-machine decoder, a pretty printer. No JSON in Base, so this exists. |
+| `src/tweets.bend` | X's answers into the tweets that are in them: the three response shapes folded into one, so a read answers with the tweet rather than with the envelope around it. |
 | `src/domain.bend` | The vocabulary: verbs, credentials, items, errors, requests, the model and the step. Pure data, no behaviour. |
 | `src/scan.bend` | Text walking: finding a needle in a large document and reading the tokens around it. Exists because X's client bundle is over a megabyte. |
 | `src/policy.bend` | Every decision that is not a side effect: which engine, which credentials, which settings win, what a tweet id is, which media a post may carry. |
@@ -30,11 +31,11 @@ writing, media, reading, mentions, and the contract an agent sees.
 | `src/http.bend` | The transport *described*: one request to one curl argv — literal body or multipart form — curl's answer back into a status and a body, failures into error codes. |
 | `src/api.bend` | The requests each verb sends: one constructor per verb, the media upload queue, the headers each credential shape carries, the variables, the operation ids and the hosts. |
 | `src/update.bend` | The fold: a run is a state machine over messages, and `Update.step` is the whole of it. Config file, text file, fixture and answer, in rounds. |
-| `src/view.bend` | What the run prints, as data: the agent envelope and the terminal rendering, chosen by the mode the settings resolved. |
+| `src/view.bend` | What the run prints, as data: the agent envelope, the tweets as a block each on a terminal, and the indent rendering for everything else. |
 | `src/effects.bend` | The interpreter, and the only place IO happens: argv, environment, file reads, `curl`, printing, and `main`. |
 | `LAWS.bend` / `PROOF.bend` | Nine laws and their proofs. |
-| `tests/*_test.bend` | Seven runnable programs, 395 cases, each dying with a nonzero exit on the first failure. |
-| `tests/e2e.sh` | The real command line, 82 cases, writing `tests/e2e_artifact.txt`. |
+| `tests/*_test.bend` | Eight runnable programs, 472 cases, each dying with a nonzero exit on the first failure. |
+| `tests/e2e.sh` | The real command line, 87 cases, writing `tests/e2e_artifact.txt`. |
 | `tests/live_server.py` | A stand-in backend so the transport can be exercised over a real socket without reaching X: the four operations, the media service and the mentions timeline. |
 | `CHANGELOG.md` | Release notes, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. `bird version` prints the version the log's newest entry names. |
 
@@ -88,14 +89,15 @@ byte is written.
 ```sh
 bend PROOF.bend            # ALL PROOFS CHECK, or SOME PROOFS FAIL
 bend src/effects.bend --check-only
-bash tests/e2e.sh            # 82 cases against the real command line
+bash tests/e2e.sh            # 87 cases against the real command line
 bend tests/json_test.bend    # 25 cases
 bend tests/argv_test.bend    # 46 cases
 bend tests/http_test.bend    # 29 cases
 bend tests/api_test.bend     # 48 cases
 bend tests/scan_test.bend    # 31 cases
 bend tests/bundle_test.bend  # 37 cases
-bend tests/update_test.bend  # 179 cases
+bend tests/tweets_test.bend  # 63 cases
+bend tests/update_test.bend  # 193 cases
 ```
 
 `bend LAWS.bend` on its own prints the open claims (one TODO per law); that is

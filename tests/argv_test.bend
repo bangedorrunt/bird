@@ -271,6 +271,7 @@ def check_table(name: String, names: List<&2, String>) -> IO(Unit):
 # a setting.
 def policy_flags() -> List<&2, String>:
   "--json" <> (
+    "--raw" <> (
     "--dry-run" <> (
       "--text" <> (
         "--text-file" <> (
@@ -309,6 +310,7 @@ def policy_flags() -> List<&2, String>:
       )
     )
   )
+)
 def zero_if(hit: Bool) -> U32:
   match hit:
     case True{}:

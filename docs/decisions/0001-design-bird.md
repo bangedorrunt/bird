@@ -38,7 +38,7 @@ Five constraints shaped everything:
 
 ## Decisions
 
-The twelve decisions below are the design. Each is stated with what it rules
+The fourteen decisions below are the design. Each is stated with what it rules
 out and what proves it still holds.
 
 ### 1. A pure core and exactly one interpreter
@@ -314,8 +314,9 @@ JSON envelope on stdout and nothing else. Success:
 `{ok:true, verb, status, data, notes}`; failure:
 `{ok:false, error:{id,message,hint}, status, body, notes}`. Notes ride inside the
 envelope, so a warning can never land in the middle of the data. Otherwise
-**human mode**: the payload indented with X's outer `data` member unwrapped; a
-manual answer printed as itself; `null` prints `ok`; errors and notes go to
+**human mode**: the payload as prose — a read's tweets as one block each
+(section 14), a manual answer printed as itself, everything else indented with
+X's outer `data` member unwrapped; `null` prints `ok`; errors and notes go to
 stderr (notes one per line), so stdout stays parseable. The exit code is part of
 both contracts (section 8).
 
@@ -499,6 +500,49 @@ case, which runs the real Chrome recipe — a database in Chrome's own shape, re
 ciphertext, a real `openssl` — against a stand-in and asserts what the server
 received.
 
+### 14. A read answers with the tweet; `--raw` is the way back
+
+**Decision.** X's answers are folded into one shape in the pure core
+(`src/tweets.bend`), and every read verb answers with it: `data.tweets[]`, each
+tweet an `id`, `text`, `lang`, `created_at`, `author`, `metrics`, `media`, `urls`,
+`quoted` and `in_reply_to`. `read` narrows the conversation X sends to the tweet
+that was asked for; `replies`, `thread`, `search` and `mentions` keep every tweet,
+in X's order. `whoami` answers with one profile in the same spirit. `--raw` is the
+escape hatch: the body X sent, unwrapped and untouched.
+
+Three response shapes have to be recognised and they are genuinely different: a
+GraphQL timeline (`rest_id` beside a `legacy` that holds `full_text`, the author
+nested under `core`), the notifications endpoint (`full_text` at the top level,
+the author in `globalObjects.users` keyed by the tweet's `user_id_str`), and the
+viewer. The shims are per field rather than per shape: a key is read from `legacy`
+when the tweet has one there and from the top level otherwise, because `views` and
+`rest_id` are top-level on both. A quoted tweet is a tweet inside a tweet, so the
+walk collects a node and does not descend into it — descending would answer a
+search with the quote as a result of its own.
+
+**Why.** The envelope is about 119 KB for one tweet and the text is six levels
+down. Every caller would otherwise write that walk, and no two of them would be
+quite the same, which is how a normalizer comes to answer with an empty author.
+It is also what makes the human rendering possible at all: a terminal printing X's
+envelope is printing brackets.
+
+**Ruled out.** Answering with the raw body and leaving the walk to callers; a
+renderer that knows X's layout; following a quote of a quote (a recursion the
+termination checker cannot see shrinking); and dropping a tweet because a field
+the walk does not need is missing — `id_str` is read for the id when X sent it but
+is not what marks a tweet, because one dropped over it is an empty timeline handed
+to the caller.
+
+**Proved by.** `tests/tweets_test.bend` (63 cases across all three shapes) and
+`tests/e2e.sh`: a fixture read answers with `data.tweets[0]` and none of the
+envelope's keys, `--raw` answers with the envelope itself, the mentions read
+against the stand-in is asserted for the author looked up in the map beside the
+tweet, and the pty case asserts the block a person sees.
+
+**Cost.** One more module in the pure core, and one more thing to keep true when X
+reshapes an answer. The shapes it knows are named in that module's own header, so
+the next reshape costs one file.
+
 ## Consequences
 
 * **Good:** there is exactly one place where IO can be wrong, and the pure core
@@ -589,15 +633,16 @@ received.
 - [x] `bend src/effects.bend --check-only` — the program and its imports
   type-check under every rule in section 3.
 - [x] `bend PROOF.bend` — prints `ALL PROOFS CHECK` (section 2).
-- [x] Offline suites, 395 cases, 0 failures (`json` 25, `argv` 46, `http` 29,
-  `api` 48, `scan` 31, `bundle` 37, `update` 179):
-  `bend tests/{json,argv,http,api,scan,bundle,update}_test.bend`.
-  Covers sections 4–11 and 13.
-- [x] `bash tests/e2e.sh` — 82 cases, 82 ok, 0 failed, 0 skipped: command line,
-  envelope, exit codes, `retryable`, dry runs, wire-log assertions, the media
-  write (upload → alt → post), the mentions read and the login flow against the
-  stand-in, the 300 KB body, the pty case, the schema's defaults, and the guides'
-  flags (sections 4, 6, 8, 9, 10, 11, 12, 13).
+- [x] Offline suites, 472 cases, 0 failures (`json` 25, `argv` 46, `http` 29,
+  `api` 48, `scan` 31, `bundle` 37, `tweets` 63, `update` 193):
+  `bend tests/{json,argv,http,api,scan,bundle,tweets,update}_test.bend`.
+  Covers sections 4–11, 13 and 14.
+- [x] `bash tests/e2e.sh` — 87 cases, 87 ok, 0 failed, 0 skipped: command line,
+  envelope, exit codes, `retryable`, dry runs, the read payload and `--raw`,
+  wire-log assertions, the media write (upload → alt → post), the mentions read
+  and the login flow against the stand-in, the 300 KB body, the two pty cases,
+  the schema's defaults, and the guides' flags (sections 4, 6, 8, 9, 10, 11, 12,
+  13, 14).
 - [x] Live against X by hand once: `whoami`, `read 20`, `thread 20`,
   `replies 20`, `search rust --count 5` — all HTTP 200 with real payloads
   (sections 6, 7). The repeatable artifact remains the stand-in server.

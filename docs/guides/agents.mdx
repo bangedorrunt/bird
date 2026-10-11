@@ -15,9 +15,9 @@ bird schema --json | jq '.data.verbs, .data.flags, .data.exit_codes'
 ## Output is an envelope, or prose, never both
 
 One JSON envelope goes on stdout when `--json` is passed, when `BIRD_JSON=1` is
-set, or when `TERM` is empty or `dumb`. Otherwise a terminal gets the payload
-indented, and notes go to stderr so a warning never lands in the middle of the
-data a script is reading.
+set, or when `TERM` is empty or `dumb`. Otherwise a terminal gets the payload as
+prose — a read's tweets as one block each, everything else indented — and notes go
+to stderr so a warning never lands in the middle of the data a script is reading.
 
 **`TERM` is a proxy, not a fact.** Bend has no `isatty`, and the process that runs
 `curl` is given pipes, so nothing can ask whether this process's stdout is a
@@ -35,7 +35,7 @@ the terminal rendering. Pass `--json` and do not rely on the detection.
 | `ok` | `true` on success, `false` on failure. |
 | `verb` | The verb that ran. Absent on a usage error, because the command line may not have named one yet. |
 | `status` | The HTTP status, or `0` when no request was made. |
-| `data` | The parsed body, or `null` for a run that did something rather than fetched something (a write, `check`). |
+| `data` | What the run fetched: for `read`, `replies`, `thread`, `search` and `mentions` it is `{"tweets": […]}` with X's envelope left behind, for `whoami` one profile, and `null` for a run that did something rather than fetched something (a write, `check`). |
 | `notes` | Warnings, each a line. `curl`'s own words for a connection that never happened arrive here. |
 
 ## The failure envelope
@@ -77,6 +77,10 @@ prints a plan instead (see [Media](./media.mdx)).
 
 ## Reading work back out
 
+- A read answers with the tweets, not with the 119 KB they arrived in:
+  `.data.tweets[]`, each with `id`, `text`, `lang`, `created_at`, `author`,
+  `metrics`, `media`, `urls`, `quoted` and `in_reply_to`. `--raw` answers with the
+  body X sent instead. See [Reading](./reading.mdx).
 - `search` and `mentions` count: `--count` is clamped to 1..50, default 10.
 - A tweet id or url is accepted anywhere a target is wanted; the request carries
   the extracted id, never the whole url.
