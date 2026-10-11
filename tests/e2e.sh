@@ -39,6 +39,9 @@ done
 OUT="${BIRD_E2E_OUT:-tests/e2e_artifact.txt}"
 WORK="$(mktemp -d)"
 LIVE_PID=""
+# Declared empty so `set -u` is satisfied when the socket block is skipped; the
+# transcript normalizer reads it unconditionally at the end.
+LIVE_PORT=""
 cleanup() {
   [ -n "$LIVE_PID" ] && kill "$LIVE_PID" 2>/dev/null
   rm -rf "$WORK"
@@ -542,6 +545,19 @@ PY
 else
   case_skip "every flag the guides name is one the parser accepts" "needs python3 and docs/guides"
 fi
+
+# The transcript is committed, so it must not carry the run's own throwaway
+# names. The temp directory and the stand-in's port are different every run, and
+# left in they make the artifact differ from the committed one for a reason a
+# reader can do nothing about -- the diff is noise around the assertions. Both
+# are folded to a fixed placeholder here, after every case has been written.
+sed -e "s|$WORK|<work>|g" "$OUT" > "$WORK/normalized"
+if [ -n "$LIVE_PORT" ]; then
+  sed -e "s|127\.0\.0\.1:$LIVE_PORT|127.0.0.1:<port>|g" "$WORK/normalized" > "$WORK/normalized.2"
+else
+  cp "$WORK/normalized" "$WORK/normalized.2"
+fi
+mv "$WORK/normalized.2" "$OUT"
 
 {
   printf '\n# %d cases: %d ok, %d failed, %d skipped\n' "$n" "$pass" "$fail" "$skip"

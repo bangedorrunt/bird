@@ -1,0 +1,4 @@
+# The compiled CLI, built by `bend src/effects.bend -o bird`. Platform-specific
+# (a macOS arm64 Mach-O here), so the source is what travels and each machine
+# rebuilds it; the installed copy on PATH is `~/.local/bin/bird`.
+/bird

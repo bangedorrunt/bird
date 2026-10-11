@@ -5,14 +5,14 @@
 ## 1. the manual comes out as one envelope on a pipe
 $ bird --help
 exit 0
-{"ok":true,"verb":"help","status":0,"data":"bird -- post and read X/Twitter\n\nusage: bird <verb> [flags]\n\nverbs\n  tweet [--text <text>] [--media <path>] [--alt <text>]   post a tweet\n  reply <tweet-id|url> [--text <text>] [--media <path>]   reply to a tweet\n  read <tweet-id|url>                                    one tweet\n  replies <tweet-id|url>                                 replies to a tweet\n  thread <tweet-id|url>                                  a whole thread\n  search <query> [--count <n>]                           recent tweets\n  mentions [--count <n>]                                 mentions of you\n  whoami                                                 the signed-in account\n  check                                                  whether credentials work\n  help                                                   this text\n  schema                                                 this, as json\n  version                                                the build\n\nsettings\n  --engine graphql|sweetistics|auto   which backend answers\n  --auth-token <token> --ct0 <token>  X session cookies\n  --sweetistics-api-key <key>         API key for the sweetistics backend\n  --web-bearer <token>                client bearer for the graphql engine\n  --gql-features <json>               graphql feature flags, they rotate\n  --op-create-tweet and friends       graphql operation ids, they rotate\n  --media-upload-base <url>           where X's media service lives\n  --gql-base <url>                    where X's graphql endpoint lives\n  --mentions-url <url>                X's mentions timeline endpoint\n  --json                              one json envelope on stdout\n  --dry-run                           describe the request, send nothing\n  --timeout-ms <n>                    per-request timeout, 1000..120000\n\nenvironment\n  BIRD_JSON=1                         same as --json\n  BIRD_CONFIG                         a json object of flag names and values\n  BIRD_<flag>                         --auth-token is BIRD_AUTH_TOKEN, --count is BIRD_COUNT\n\nexit codes\n  0 ok   2 usage   3 auth   4 not found   5 rate limited\n  6 network   7 upstream   1 internal\n","notes":[]}
+{"ok":true,"verb":"help","status":0,"data":"bird -- post and read X/Twitter\n\nusage: bird <verb> [flags]\n\nverbs\n  tweet [--text <text>] [--media <path>] [--alt <text>]   post a tweet\n  reply <tweet-id|url> [--text <text>] [--media <path>]   reply to a tweet\n  read <tweet-id|url>                                    one tweet\n  replies <tweet-id|url>                                 replies to a tweet\n  thread <tweet-id|url>                                  a whole thread\n  search <query> [--count <n>]                           recent tweets\n  mentions [--count <n>]                                 mentions of you\n  whoami                                                 the signed-in account\n  check                                                  whether credentials work\n  help                                                   this text\n  schema                                                 this, as json\n  version                                                the build\n\nsettings\n  --engine graphql|sweetistics|auto   which backend answers\n  --auth-token <token> --ct0 <token>  X session cookies\n  --sweetistics-api-key <key>         API key for the sweetistics backend\n  --web-bearer <token>                client bearer for the graphql engine\n  --gql-features <json>               graphql feature flags, they rotate\n  --op-create-tweet and friends       graphql operation ids, they rotate\n  --media-upload-base <url>           where X's media service lives\n  --gql-base <url>                    where X's graphql endpoint lives\n  --mentions-url <url>                X's mentions timeline endpoint\n  --json                              one json envelope on stdout\n  --dry-run                           describe the request, send nothing\n  --timeout-ms <n>                    per-request timeout, 1000..120000\n\nenvironment\n  BIRD_JSON=1                         same as --json\n  BIRD_CONFIG                         a json object of flag names and values\n  BIRD_<flag>                         --auth-token is BIRD_AUTH_TOKEN, --count is BIRD_COUNT\n  TWITTER_AUTH_TOKEN / TWITTER_CT0    also read; BIRD_ wins when both are set\n\nexit codes\n  0 ok   2 usage   3 auth   4 not found   5 rate limited\n  6 network   7 upstream   1 internal\n","notes":[]}
 
 ok   1. the manual comes out as one envelope on a pipe
 
 ## 2. no arguments is the manual too
 $ bird 
 exit 0
-{"ok":true,"verb":"help","status":0,"data":"bird -- post and read X/Twitter\n\nusage: bird <verb> [flags]\n\nverbs\n  tweet [--text <text>] [--media <path>] [--alt <text>]   post a tweet\n  reply <tweet-id|url> [--text <text>] [--media <path>]   reply to a tweet\n  read <tweet-id|url>                                    one tweet\n  replies <tweet-id|url>                                 replies to a tweet\n  thread <tweet-id|url>                                  a whole thread\n  search <query> [--count <n>]                           recent tweets\n  mentions [--count <n>]                                 mentions of you\n  whoami                                                 the signed-in account\n  check                                                  whether credentials work\n  help                                                   this text\n  schema                                                 this, as json\n  version                                                the build\n\nsettings\n  --engine graphql|sweetistics|auto   which backend answers\n  --auth-token <token> --ct0 <token>  X session cookies\n  --sweetistics-api-key <key>         API key for the sweetistics backend\n  --web-bearer <token>                client bearer for the graphql engine\n  --gql-features <json>               graphql feature flags, they rotate\n  --op-create-tweet and friends       graphql operation ids, they rotate\n  --media-upload-base <url>           where X's media service lives\n  --gql-base <url>                    where X's graphql endpoint lives\n  --mentions-url <url>                X's mentions timeline endpoint\n  --json                              one json envelope on stdout\n  --dry-run                           describe the request, send nothing\n  --timeout-ms <n>                    per-request timeout, 1000..120000\n\nenvironment\n  BIRD_JSON=1                         same as --json\n  BIRD_CONFIG                         a json object of flag names and values\n  BIRD_<flag>                         --auth-token is BIRD_AUTH_TOKEN, --count is BIRD_COUNT\n\nexit codes\n  0 ok   2 usage   3 auth   4 not found   5 rate limited\n  6 network   7 upstream   1 internal\n","notes":[]}
+{"ok":true,"verb":"help","status":0,"data":"bird -- post and read X/Twitter\n\nusage: bird <verb> [flags]\n\nverbs\n  tweet [--text <text>] [--media <path>] [--alt <text>]   post a tweet\n  reply <tweet-id|url> [--text <text>] [--media <path>]   reply to a tweet\n  read <tweet-id|url>                                    one tweet\n  replies <tweet-id|url>                                 replies to a tweet\n  thread <tweet-id|url>                                  a whole thread\n  search <query> [--count <n>]                           recent tweets\n  mentions [--count <n>]                                 mentions of you\n  whoami                                                 the signed-in account\n  check                                                  whether credentials work\n  help                                                   this text\n  schema                                                 this, as json\n  version                                                the build\n\nsettings\n  --engine graphql|sweetistics|auto   which backend answers\n  --auth-token <token> --ct0 <token>  X session cookies\n  --sweetistics-api-key <key>         API key for the sweetistics backend\n  --web-bearer <token>                client bearer for the graphql engine\n  --gql-features <json>               graphql feature flags, they rotate\n  --op-create-tweet and friends       graphql operation ids, they rotate\n  --media-upload-base <url>           where X's media service lives\n  --gql-base <url>                    where X's graphql endpoint lives\n  --mentions-url <url>                X's mentions timeline endpoint\n  --json                              one json envelope on stdout\n  --dry-run                           describe the request, send nothing\n  --timeout-ms <n>                    per-request timeout, 1000..120000\n\nenvironment\n  BIRD_JSON=1                         same as --json\n  BIRD_CONFIG                         a json object of flag names and values\n  BIRD_<flag>                         --auth-token is BIRD_AUTH_TOKEN, --count is BIRD_COUNT\n  TWITTER_AUTH_TOKEN / TWITTER_CT0    also read; BIRD_ wins when both are set\n\nexit codes\n  0 ok   2 usage   3 auth   4 not found   5 rate limited\n  6 network   7 upstream   1 internal\n","notes":[]}
 
 ok   2. no arguments is the manual too
 
@@ -102,18 +102,18 @@ stderr:
 ok   13. a read with no credentials stops at the credential check
 
 ## 14. a missing file is refused with the path and the reason
-$ bird read 12345 --fixture /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/absent.json --json
+$ bird read 12345 --fixture <work>/absent.json --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"cannot read the file this run was asked for: /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/absent.json","hint":"No such file or directory","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"cannot read the file this run was asked for: <work>/absent.json","hint":"No such file or directory","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
 ok   14. a missing file is refused with the path and the reason
 
 ## 15. a config file that is not json names itself
-$ BIRD_CONFIG=/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/broken.json bird check --json
+$ BIRD_CONFIG=<work>/broken.json bird check --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"in /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/broken.json: the config file is not usable: trailing data after the top-level value","hint":"{\"--auth-token\": \"...\", \"--count\": 5} is the shape","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"in <work>/broken.json: the config file is not usable: trailing data after the top-level value","hint":"{\"--auth-token\": \"...\", \"--count\": 5} is the shape","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
@@ -162,42 +162,42 @@ exit 0
 ok   21. a search count is clamped to fifty
 
 ## 22. a fixture is the body, not the path that named it
-$ bird read 12345 --fixture /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/tweet.json --json
+$ bird read 12345 --fixture <work>/tweet.json --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"data":{"tweetResult":{"result":{"rest_id":"12345","legacy":{"full_text":"a fixture tweet","id_str":"12345"}}}}},"notes":[]}
 
 ok   22. a fixture is the body, not the path that named it
 
 ## 23. a fixture answers with the status a real 200 would
-$ bird read 12345 --fixture /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/tweet.json --json
+$ bird read 12345 --fixture <work>/tweet.json --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"data":{"tweetResult":{"result":{"rest_id":"12345","legacy":{"full_text":"a fixture tweet","id_str":"12345"}}}}},"notes":[]}
 
 ok   23. a fixture answers with the status a real 200 would
 
 ## 24. a text file supplies the text when the command line does not
-$ bird tweet --text-file /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/text.txt --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text-file <work>/text.txt --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hello from a file\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hello from a file\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
 ok   24. a text file supplies the text when the command line does not
 
 ## 25. the command line beats the text file
-$ bird tweet --text explicit --text-file /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/text.txt --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text explicit --text-file <work>/text.txt --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"explicit\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"explicit\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
 ok   25. the command line beats the text file
 
 ## 26. a config file sets a setting
-$ BIRD_CONFIG=/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/count.json bird search rust --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ BIRD_CONFIG=<work>/count.json bird search rust --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
 {"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":7,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":7,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
 ok   26. a config file sets a setting
 
 ## 27. a flag beats the config file
-$ BIRD_CONFIG=/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/count.json bird search rust --count 2 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ BIRD_CONFIG=<work>/count.json bird search rust --count 2 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
 {"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":2,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":2,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
@@ -247,16 +247,16 @@ stderr:
 ok   32. an alt with no media to describe is refused
 
 ## 33. an unsupported media type is refused by name
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/notes.txt --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/notes.txt --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"unsupported media type: /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/notes.txt","hint":"","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"unsupported media type: <work>/notes.txt","hint":"","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
 ok   33. an unsupported media type is refused by name
 
 ## 34. five images is one too many
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/second.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/third.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/fourth.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/fifth.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/shot.png --media <work>/second.png --media <work>/third.png --media <work>/fourth.png --media <work>/fifth.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"at most four images per post","hint":"","retryable":false},"status":0,"body":"","notes":[]}
 
@@ -265,7 +265,7 @@ stderr:
 ok   34. five images is one too many
 
 ## 35. images and a video are refused together
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/clip.mp4 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/shot.png --media <work>/clip.mp4 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"a post takes images or one video, never both","hint":"","retryable":false},"status":0,"body":"","notes":[]}
 
@@ -274,35 +274,35 @@ stderr:
 ok   35. images and a video are refused together
 
 ## 36. a media write describes a media plan
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/shot.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
-{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
+{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
 
 ok   36. a media write describes a media plan
 
 ## 37. ...with the upload step's endpoint
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/shot.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
-{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
+{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
 
 ok   37. ...with the upload step's endpoint
 
 ## 38. ...and the ids marked as coming from the answers
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/shot.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
-{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
+{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
 
 ok   38. ...and the ids marked as coming from the answers
 
 ## 39. four images and four alts are one legal plan
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/second.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/third.png --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/fourth.png --alt a --alt b --alt c --alt d --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ bird tweet --text hi --media <work>/shot.png --media <work>/second.png --media <work>/third.png --media <work>/fourth.png --alt a --alt b --alt c --alt d --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 0
-{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a\"}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/metadata/create.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a\"}}","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/second.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/second.png","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"b\"}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/metadata/create.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"b\"}}","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/third.png"],"timeout_ms":15000,"curl":["
+{"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a\"}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/metadata/create.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a\"}}","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/second.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/second.png","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"b\"}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/metadata/create.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"b\"}}","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/third.png"],"timeout_ms":15000,"curl":["
 ... (    8657 bytes in total, truncated in this transcript)
 ok   39. four images and four alts are one legal plan
 
 ## 40. a fixture cannot answer a media write
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --fixture /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/tweet.json --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --json
+$ bird tweet --text hi --media <work>/shot.png --fixture <work>/tweet.json --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"--fixture answers a single request, and a media write is several","hint":"drop --fixture, or pass --dry-run to inspect the plan","retryable":false},"status":0,"body":"","notes":[]}
 
@@ -311,7 +311,7 @@ stderr:
 ok   40. a fixture cannot answer a media write
 
 ## 41. an api key cannot carry a media write
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --sweetistics-api-key k --json
+$ bird tweet --text hi --media <work>/shot.png --sweetistics-api-key k --json
 exit 3
 {"ok":false,"error":{"id":"auth","message":"uploading media uses X's own upload endpoint: it needs a session, not an API key","hint":"run with --auth-token and --ct0, or post the text alone","retryable":false},"status":0,"body":"","notes":[]}
 
@@ -368,16 +368,16 @@ stderr:
 ok   47. mentions without a session is refused
 
 ## 48. a config file refuses the text of a post
-$ BIRD_CONFIG=/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/content.json bird tweet --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
+$ BIRD_CONFIG=<work>/content.json bird tweet --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"in /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/content.json: not a setting: --text","hint":"a config file holds settings such as --engine or --count; the text and the media of one post go on the command line","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"in <work>/content.json: not a setting: --text","hint":"a config file holds settings such as --engine or --count; the text and the media of one post go on the command line","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
 ok   48. a config file refuses the text of a post
 
 ## 49. a config file cannot smuggle in a number that is not one
-$ BIRD_CONFIG=/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/badnumber.json bird check --json
+$ BIRD_CONFIG=<work>/badnumber.json bird check --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"--count is not a number: abc","hint":"give it a whole number, 1..50","retryable":false},"status":0,"body":"","notes":[]}
 
@@ -386,30 +386,30 @@ stderr:
 ok   49. a config file cannot smuggle in a number that is not one
 
 ## 50. a config file refuses a key the flag table does not know
-$ BIRD_CONFIG=/var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/unknown.json bird check --json
+$ BIRD_CONFIG=<work>/unknown.json bird check --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"in /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/unknown.json: not a setting: --nope","hint":"a config file holds settings such as --engine or --count; the text and the media of one post go on the command line","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"in <work>/unknown.json: not a setting: --nope","hint":"a config file holds settings such as --engine or --count; the text and the media of one post go on the command line","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
 ok   50. a config file refuses a key the flag table does not know
 
 ## 51. a real 200 arrives with its status and its payload
-$ bird whoami --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-viewer /viewer --json
+$ bird whoami --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-viewer /viewer --json
 exit 0
 {"ok":true,"verb":"whoami","status":200,"data":{"data":{"viewer":{"user_results":{"result":{"rest_id":"1","legacy":{"screen_name":"bird_live_probe","name":"Bird Probe"}}}}}},"notes":[]}
 
 ok   51. a real 200 arrives with its status and its payload
 
 ## 52. the request is not sent twice, to a host named curl
-$ bird whoami --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-viewer /viewer --json
+$ bird whoami --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-viewer /viewer --json
 exit 0
 {"ok":true,"verb":"whoami","status":200,"data":{"data":{"viewer":{"user_results":{"result":{"rest_id":"1","legacy":{"screen_name":"bird_live_probe","name":"Bird Probe"}}}}}},"notes":[]}
 
 ok   52. the request is not sent twice, to a host named curl
 
 ## 53. a real 404 is not_found, carrying its own status
-$ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-tweet-detail /detail --json
+$ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-tweet-detail /detail --json
 exit 4
 {"ok":false,"error":{"id":"not_found","message":"{\"errors\":[{\"message\":\"No tweet found\"}]}","hint":"the tweet may be deleted, or the id may be wrong","retryable":false},"status":404,"body":"{\"errors\":[{\"message\":\"No tweet found\"}]}","notes":[]}
 
@@ -418,7 +418,7 @@ stderr:
 ok   53. a real 404 is not_found, carrying its own status
 
 ## 54. a real 429 keeps the exact body, nothing glued to it
-$ bird search rust --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-search /search --json
+$ bird search rust --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-search /search --json
 exit 5
 {"ok":false,"error":{"id":"rate_limited","message":"Rate limit exceeded","hint":"X is rate limiting this account: back off before retrying","retryable":true},"status":429,"body":"Rate limit exceeded","notes":[]}
 
@@ -427,7 +427,7 @@ stderr:
 ok   54. a real 429 keeps the exact body, nothing glued to it
 
 ## 55. a real 500 is upstream
-$ bird tweet hi --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-create-tweet /tweet --json
+$ bird tweet hi --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-create-tweet /tweet --json
 exit 7
 {"ok":false,"error":{"id":"upstream","message":"{\"errors\":[{\"message\":\"Internal error\"}]}","hint":"the body carries X's own message","retryable":true},"status":500,"body":"{\"errors\":[{\"message\":\"Internal error\"}]}","notes":[]}
 
@@ -445,7 +445,7 @@ stderr:
 ok   56. a failure with no request behind it reports no status
 
 ## 57. a body far bigger than a tweet still parses and prints
-$ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-tweet-detail /big --json
+$ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-tweet-detail /big --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"data":{"threaded_conversation_with_injections_v2":{"instructions":[{"entries":[{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"legacy":{"full_text":"padding, so the body is the size a real thread is and not an id","id_str":"900001"}}}}}},{"content":{"itemContent":{"tweet_results":{"result":{"l
 ... (  199345 bytes in total, truncated in this transcript)
@@ -456,7 +456,7 @@ requests: [('POST', '/viewer', '{}'), ('POST', '/viewer', '{}'), ('POST', '/deta
 ok   58. the server received the variables, one request each
 
 ## 59. a 404 is not retryable
-$ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-tweet-detail /detail --json
+$ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-tweet-detail /detail --json
 exit 4
 {"ok":false,"error":{"id":"not_found","message":"{\"errors\":[{\"message\":\"No tweet found\"}]}","hint":"the tweet may be deleted, or the id may be wrong","retryable":false},"status":404,"body":"{\"errors\":[{\"message\":\"No tweet found\"}]}","notes":[]}
 
@@ -465,7 +465,7 @@ stderr:
 ok   59. a 404 is not retryable
 
 ## 60. a 429 is retryable, and the envelope says so
-$ bird search rust --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:61519 --op-search /search --json
+$ bird search rust --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-search /search --json
 exit 5
 {"ok":false,"error":{"id":"rate_limited","message":"Rate limit exceeded","hint":"X is rate limiting this account: back off before retrying","retryable":true},"status":429,"body":"Rate limit exceeded","notes":[]}
 
@@ -474,14 +474,14 @@ stderr:
 ok   60. a 429 is retryable, and the envelope says so
 
 ## 61. a media write uploads, sets the alt, then posts
-$ bird tweet --text media live --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/shot.png --alt a description --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:61519/graphql --mentions-url http://127.0.0.1:61519/mentions.json --media-upload-base http://127.0.0.1:61519/media --op-create-tweet create-tweet --json
+$ bird tweet --text media live --media <work>/shot.png --alt a description --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --op-create-tweet create-tweet --json
 exit 0
 {"ok":true,"verb":"tweet","status":200,"data":{"data":{"create_tweet":{"tweet_results":{"result":{"rest_id":"5150","legacy":{"full_text":"media live"}}}}}},"notes":[]}
 
 ok   61. a media write uploads, sets the alt, then posts
 
 ## 62. mentions reads the timeline its setting names
-$ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:61519/graphql --mentions-url http://127.0.0.1:61519/mentions.json --media-upload-base http://127.0.0.1:61519/media --json
+$ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"globalObjects":{"tweets":{"11":{"full_text":"@bird hello"}}},"timeline":{"instructions":[]}},"notes":[]}
 
@@ -494,7 +494,7 @@ mentions: [('GET', '/mentions.json?count=10', 0)]
 ok   63. the server received the upload, the alt and the post, in that order
 
 ## 64. an attachment that is not there is a usage error
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:61519/graphql --mentions-url http://127.0.0.1:61519/mentions.json --media-upload-base http://127.0.0.1:61519/media --json
+$ bird tweet --text hi --media <work>/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},"status":0,"body":"","notes":["curl: (26) Failed to open/read local data from file/application\n"]}
 
@@ -503,7 +503,7 @@ stderr:
 ok   64. an attachment that is not there is a usage error
 
 ## 65. ...and it is not retryable
-$ bird tweet --text hi --media /var/folders/z4/_8p90dn53gl9y4_7cm7rgf3m0000gn/T/tmp.dCHTFp952B/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:61519/graphql --mentions-url http://127.0.0.1:61519/mentions.json --media-upload-base http://127.0.0.1:61519/media --json
+$ bird tweet --text hi --media <work>/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},"status":0,"body":"","notes":["curl: (26) Failed to open/read local data from file/application\n"]}
 
@@ -512,14 +512,14 @@ stderr:
 ok   65. ...and it is not retryable
 
 ## 66. the cookie names a shell already exports are read
-$ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:61519/graphql --mentions-url http://127.0.0.1:61519/mentions.json --media-upload-base http://127.0.0.1:61519/media --json
+$ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"globalObjects":{"tweets":{"11":{"full_text":"@bird hello"}}},"timeline":{"instructions":[]}},"notes":[]}
 
 ok   66. the cookie names a shell already exports are read
 
 ## 67. ...and BIRD_ wins when both spellings are set
-$ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 BIRD_AUTH_TOKEN=BIRD-AT BIRD_CT0=BIRD-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:61519/graphql --mentions-url http://127.0.0.1:61519/mentions.json --media-upload-base http://127.0.0.1:61519/media --json
+$ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 BIRD_AUTH_TOKEN=BIRD-AT BIRD_CT0=BIRD-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"globalObjects":{"tweets":{"11":{"full_text":"@bird hello"}}},"timeline":{"instructions":[]}},"notes":[]}
 

@@ -418,6 +418,11 @@ that came back, then the `CreateTweet` holding it. A case that cannot run here
 (no curl, no python3, no pty) is recorded as **skipped** and counted separately,
 never as a pass. The transcript (`tests/e2e_artifact.txt`, `BIRD_E2E_OUT` to
 redirect) is the artifact: per case, the command, the exit code, and the output.
+Because it is committed, the run's own throwaway names are folded to placeholders
+(`<work>`, `<port>`) as it is written. The port above has to be random, and a
+transcript carrying it would differ from the committed one for a reason a reader
+can act on in no way, so every local run would leave a diff of pure noise around
+the assertions.
 
 The guides are checked by the same script: every `--flag` named in
 `docs/guides/*.mdx` must be accepted by the parser, because a guide is not

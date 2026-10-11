@@ -22,6 +22,9 @@ log starts at `0.3.0`.
 - `tests/e2e.sh` now clears every environment name the program reads before the
   first case. A shell that exports a real session would otherwise let the
   "no credentials" case find it and reach X.
+- The e2e transcript folds the run's temp directory and the stand-in's port to
+  `<work>` and `<port>` as it is written. Both are different every run, and the
+  committed artifact differed from itself for no reason a reader could act on.
 
 ## [0.3.0] - 2026-10-11
 
