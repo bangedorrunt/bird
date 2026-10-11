@@ -1,0 +1,123 @@
+---
+title: Setup
+description: Credentials for the two engines, the config file, environment variables, how settings resolve, and how to check a session.
+---
+
+# Setup
+
+`bird` talks to one of two backends, and which one it uses follows the
+credential you give it. There is nothing to log in to and no token is stored: the
+settings are read per run.
+
+## A session (X's own GraphQL API)
+
+Three values, all of which X's web client sends:
+
+```sh
+bird whoami \
+  --auth-token "$TWITTER_AUTH_TOKEN" \
+  --ct0 "$TWITTER_CT0" \
+  --web-bearer "$BEARER" \
+  --gql-features "$FEATURES" \
+  --op-viewer "$VIEWER_QUERY_ID"
+```
+
+| setting | what it is |
+| --- | --- |
+| `--auth-token` | The `auth_token` cookie. It names the account. |
+| `--ct0` | The `ct0` cookie. It is also sent as `x-csrf-token`, which X requires on a write. |
+| `--web-bearer` | The client bearer. It identifies the client, not you. |
+| `--gql-features` | X's feature-flag blob, spliced into the request as raw JSON. Default `{}`. |
+| `--op-viewer`, `--op-tweet-detail`, `--op-search`, `--op-create-tweet` | One query id per operation. They rotate on X's side. |
+
+The last two matter on a bad day: the operation ids and the feature blob are not
+compiled in, because X rotates them, and a run that is missing one is refused
+with a message naming the flag rather than sending a request built from a guess.
+
+Writes, media and mentions all need a session. An API key cannot sign for them:
+the upload endpoint and the mentions timeline belong to X's web service.
+
+## An API key (the Sweetistics backend)
+
+```sh
+bird search rust --sweetistics-api-key "$KEY" --sweetistics-base-url https://sweet.example
+```
+
+`--sweetistics-base-url` is trimmed of its trailing slash, and the operation ids
+above double as that backend's routes, so one setting names the operation for
+both engines. Reads and text-only writes work here; `mentions` and media do not,
+and both say so instead of failing obscurely.
+
+## Which engine answers
+
+`--engine graphql`, `--engine sweetistics`, or `--engine auto` (the default,
+which follows the credential). `auto` with no credential is an auth error, not a
+silent choice.
+
+## Check before you post
+
+```sh
+bird check --json
+```
+
+`check` sends nothing: it reports what the settings resolved to, which engine
+would answer, where the credentials came from, and the request timeout.
+
+```json
+{"ok":true,"verb":"check","status":0,"data":{"engine":"graphql","credentials":"session","operations":{"create_tweet":"…","tweet_detail":"…","search":"…","viewer":"…"},"timeout_ms":15000},"notes":[]}
+```
+
+## Settings resolve in one order
+
+1. the flag on the command line, then
+2. `BIRD_<FLAG>` with dashes turned into underscores and upper-cased — so
+   `--auth-token` is `BIRD_AUTH_TOKEN` and `--count` is `BIRD_COUNT` — then
+3. the config file, then
+4. the built-in default.
+
+The config file is named by `BIRD_CONFIG` and is a JSON object whose keys are
+flag names:
+
+```json
+{ "--engine": "graphql", "--count": 5, "--op-viewer": "Viewer" }
+```
+
+Two rules make it safe to keep one file around:
+
+- A key the flag table does not know is refused **by name**, so a typo is never
+  a setting that silently does nothing.
+- `--text`, `--media` and `--alt` are refused in a config file. They say what one
+  post *is*, not how the program behaves; a config file that posted the text it
+  happened to hold would be a worse failure than a refusal.
+
+A number that cannot be read is refused too, rather than quietly replaced by its
+default. That check runs on the winning value, so the flag, the environment and
+the config file are all held to it:
+
+```sh
+bird search rust --count abc
+# exit 2: "--count is not a number: abc"
+```
+
+`BIRD_JSON=1` is the one variable read by its own name rather than as a flag: it
+is the same as `--json`.
+
+## Hosts are settings too
+
+Nothing about X's deployment is compiled in, which also means a run can be
+pointed at a stand-in for testing:
+
+| setting | default |
+| --- | --- |
+| `--gql-base` | `https://x.com/i/api/graphql` |
+| `--mentions-url` | `https://x.com/i/api/2/notifications/mentions.json` |
+| `--media-upload-base` | `https://upload.twitter.com/1.1/media` |
+
+`--media-upload-base` is the `/1.1/media` prefix, so both endpoints the uploader
+uses (an upload and an alt-text call) come from that one value.
+
+## Timeout
+
+`--timeout-ms` is per request, clamped to **1000..120000**, default 15000. A
+sub-second budget floors at 1 second rather than 0, because `curl` reads
+`--max-time 0` as "no limit at all", which is the opposite of a timeout.

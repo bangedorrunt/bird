@@ -1,0 +1,113 @@
+---
+title: Reading
+description: Read one tweet, its replies or a whole thread, and search recent tweets, with the id taken from a url when that is easier.
+---
+
+# Reading
+
+Four verbs read, and none of them needs `--web-bearer` alone: X's GraphQL API
+wants the session, and the API-key backend takes reads as well.
+
+| verb | what it fetches |
+| --- | --- |
+| `read <tweet-id\|url>` | One tweet. |
+| `replies <tweet-id\|url>` | The replies to it. |
+| `thread <tweet-id\|url>` | The whole self-thread. |
+| `search <query> [--count <n>]` | Recent tweets matching the query. |
+| `whoami` | The signed-in account. |
+| `check` | What the settings resolved to. Sends nothing. |
+
+```sh
+bird read https://x.com/someone/status/1234567890 \
+  --auth-token "$TWITTER_AUTH_TOKEN" --ct0 "$TWITTER_CT0" \
+  --web-bearer "$BEARER" --gql-features "$FEATURES" \
+  --op-tweet-detail "$DETAIL_QUERY_ID" --json
+```
+
+## A tweet id, from an id or a url
+
+The argument is either the id or a whole url, and the request only ever carries
+the extracted id — what you pasted is never forwarded. A url is read for
+`/status/<digits>`, so
+
+```sh
+bird read https://x.com/someone/status/1234567890 --dry-run --json
+bird read 1234567890 --dry-run --json
+```
+
+describe the same body:
+
+```json
+"body":"{\"variables\":{\"focalTweetId\":\"1234567890\",\"includePromotedContent\":false,\"withBirdwatchNotes\":false,\"withVoice\":false},\"queryId\":\"…\",\"features\":{}}"
+```
+
+The three extra variables are not decoration: X validates the variables before it
+runs anything, and without them `TweetDetail` answers 422 naming the first one
+missing. They are what a working read costs.
+
+## A target with no id in it is refused
+
+If nothing in the argument can be read as an id, the run stops with exit code `2`
+rather than sending an empty `focalTweetId`:
+
+```sh
+bird read abc --auth-token … --ct0 … --web-bearer …
+# exit 2: "that is not a tweet id, and none can be read out of it: abc"
+```
+
+Digits are what the extraction keeps, so a plain id, a url with `/status/<id>` in
+its path, and a share url with a query string (`…/status/99887766?s=20&t=abc`) all
+work; a handle, a word, or a url without a status path does not, because it would
+spend a round trip to learn what is knowable locally.
+
+## Count
+
+`--count` applies to `search` and `mentions` and is clamped to **1..50** (the
+default is 10). `--count 0` becomes 1, `--count 999` becomes 50. It is read from
+the item list rather than the verb, so it counts whether it was written before or
+after the verb it belongs to — and a value the program cannot read is refused
+rather than quietly replaced by the default.
+
+## The rendering
+
+A terminal gets the payload indented, with X's `data` member unwrapped, because
+that member is what a reader wants and the envelope around it is X's business. A
+script should ask for the envelope instead of hoping the rendering was guessed
+right:
+
+```sh
+bird read 1234567890 … --json | jq -r '.data.data.tweetResult.result.legacy.full_text'
+```
+
+```json
+{"ok":true,"verb":"read","status":200,"data":{"data":{"tweetResult":{"result":{"rest_id":"1234567890","legacy":{"full_text":"a tweet","id_str":"1234567890"}}}}},"notes":[]}
+```
+
+## Answering without a network
+
+`--fixture PATH` answers the run from a file, through the same fold a live
+response takes, so a fixture cannot drift from a real run:
+
+```sh
+bird read 1234567890 --fixture tweet.json --json
+```
+
+That is the whole request path minus the socket: the body is parsed, the status
+reported is the one a real 200 would give, and the error path is the same one a
+live 404 takes. `--dry-run` is the other half: it prints the request that would
+have been sent instead of answering it.
+
+## Failures
+
+The status X returned is kept in `status` even when the run fails, so a 404 reads
+differently from a 500 and from a request that never left:
+
+```json
+{"ok":false,"error":{"id":"not_found","message":"{\"errors\":[{\"message\":\"No tweet found\"}]}","hint":"the tweet may be deleted, or the id may be wrong"},"status":404,"body":"{\"errors\":[{\"message\":\"No tweet found\"}]}","notes":[]}
+```
+
+A failure with no request behind it — a usage error — reports `status` 0, which is
+the honest answer there. A body that is not JSON is not thrown away: it is kept in
+`body` and a note says why `data` is null. `error.retryable` says whether trying
+again unchanged is sensible, so a caller does not have to keep its own copy of the
+status table.

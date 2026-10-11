@@ -1,0 +1,134 @@
+---
+title: Media
+description: Attach images or a video to a tweet or reply, add alt text, and understand the multi-request flow bird runs to do it.
+---
+
+# Media
+
+`--media` attaches a file to a `tweet` or a `reply`, and `--alt` describes the
+file before it. A media write is not one request: each file is uploaded first, an
+alt text is a request of its own, and only then is the post built, carrying the
+ids the uploads returned.
+
+```sh
+bird tweet --text "a screenshot" \
+  --media shot.png --alt "the settings screen" \
+  --auth-token "$TWITTER_AUTH_TOKEN" --ct0 "$TWITTER_CT0" \
+  --web-bearer "$BEARER" --gql-features "$FEATURES" \
+  --op-create-tweet "$CREATE_TWEET_QUERY_ID"
+```
+
+## The rules, checked before anything is sent
+
+| rule | the refusal, word for word | exit |
+| --- | --- | --- |
+| Up to four images, or one video, never a mixture | `a post takes images or one video, never both`, `at most four images per post`, `at most one video per post` | 2 |
+| Types: `jpg`, `jpeg`, `png`, `webp`, `gif`, `mp4`, `m4v`, `mov` | `unsupported media type: <path>` | 2 |
+| `--alt` is positional against `--media`, so an extra alt has nothing to describe | `more --alt than --media, so the extra alts have nothing to describe` | 2 |
+| A session is required: the upload endpoint belongs to X's web service | `uploading media uses X's own upload endpoint: it needs a session, not an API key` | 3 |
+| `--fixture` answers one request, and a media write is several | `--fixture answers a single request, and a media write is several` | 2 |
+
+Every refusal names the rule that was broken. The rules are checked after
+`--text-file` has been merged in and before a request exists, so a refusal costs
+nothing.
+
+**A path that is not there is not one of these.** Nothing stats the file before
+the queue starts, so curl is what finds out:
+
+```json
+{"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},…}
+```
+
+It is `usage` and not `network` on purpose: a path that does not exist will not
+exist on the next attempt, so `retryable` is `false` and a retry loop cannot
+start. Two consequences worth knowing: the message names the flag rather than the
+path (curl's own text does not carry one), and any earlier file in the same queue
+was already uploaded, so `notes` names the ids a retry can reuse.
+
+## What actually goes out, in order
+
+For `--media a.png --alt "a photo" --media b.png`:
+
+1. `POST <media-upload-base>/upload.json` — a **multipart** form carrying
+   `media=@a.png`, and nothing else. `curl` sets the content type and streams the
+   file, so a file never has to fit in an argument or in memory.
+2. `POST <media-upload-base>/metadata/create.json` — JSON naming the id the first
+   upload returned, with the alt text: an alt belongs to the upload above it.
+3. `POST <media-upload-base>/upload.json` — `media=@b.png`.
+4. `POST <gql-base>/<op-create-tweet>/CreateTweet` — the post itself, with one
+   `media_entities` entry per collected id.
+
+A video adds `media_category=tweet_video` to its upload form; an image declares no
+category. Uploads run one at a time, so the id an alt needs is always the one that
+just arrived.
+
+Anything X refuses mid-queue — a 413 on an upload, a 429 on an alt — fails the run
+with X's own status in `status` and X's own words in `body`, rather than carrying
+on to post something half-attached:
+
+```json
+{"ok":false,"error":{"id":"upstream","message":"too big","hint":"the body carries X's own message"},"status":413,"body":"too big","notes":[]}
+```
+
+An upload that X accepts *without* naming a media id is a failure too
+(`upstream`), because the alternative is a post that quietly loses a file:
+
+```json
+{"ok":false,"error":{"id":"upstream","message":"the upload was accepted without a media id","hint":"X's answer had neither media_id_string nor media_id; try again","retryable":true},…}
+```
+
+A failure part way through the queue names the ids that are already uploaded, in
+`notes`, because those uploads are still good and there is no rollback to call:
+
+```json
+{"ok":false,…,"notes":["already uploaded, still usable: 111, 222"]}
+```
+
+## See the plan first
+
+`--dry-run` shows the queue and a final request whose ids are placeholders,
+because the real ones do not exist until the uploads answer. That is more honest
+than printing one request and implying the run is one request long.
+
+```sh
+bird tweet --text hi --media a.png --alt "a photo" --media b.png \
+  --auth-token … --ct0 … --web-bearer … --dry-run --json
+```
+
+```json
+{"ok":true,"verb":"tweet","status":0,"data":{
+  "kind":"media-plan",
+  "steps":[
+    {"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","parts":["media=@a.png"],"body":"","curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer …","--max-time","15","-F","media=@a.png","--write-out","%{http_code}"]},
+    {"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a photo\"}}","parts":[]},
+    {"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","parts":["media=@b.png"],"body":""}
+  ],
+  "request":{
+    "method":"POST",
+    "url":"https://x.com/i/api/graphql/<op-create-tweet>/CreateTweet",
+    "body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]},{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"…\",\"features\":{}}"
+  },
+  "note":"the media ids in the final request are filled from the upload responses"
+},"notes":[]}
+```
+
+Each step's header list is trimmed above for width; the real output carries the
+same headers a live request would.
+
+## A successful media write
+
+```json
+{"ok":true,"verb":"tweet","status":200,"data":{"data":{"create_tweet":{"tweet_results":{"result":{"rest_id":"5150","legacy":{"full_text":"media live"}}}}}},"notes":[]}
+```
+
+`tests/e2e.sh` runs exactly this against a stand-in server on a real socket and
+then checks the server's log: one multipart `POST /upload.json` carrying the file,
+one `POST /metadata/create.json` carrying `"media_id":"111"`, then the `CreateTweet`
+whose `media_entities` hold that same id.
+
+## Where the upload goes
+
+`--media-upload-base` is the `/1.1/media` prefix, default
+`https://upload.twitter.com/1.1/media`, so both endpoints come from one setting.
+Point it at a stand-in and the whole write path can be exercised without reaching
+X — that is what the end-to-end test does.

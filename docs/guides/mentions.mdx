@@ -1,0 +1,76 @@
+---
+title: Mentions
+description: Read the mentions timeline with bird mentions, with the count you ask for and a session that X's notifications endpoint will accept.
+---
+
+# Mentions
+
+`mentions` reads the timeline of tweets that mention the signed-in account.
+
+```sh
+bird mentions --count 20 \
+  --auth-token "$TWITTER_AUTH_TOKEN" --ct0 "$TWITTER_CT0" \
+  --web-bearer "$BEARER" --json
+```
+
+## A session, not an API key
+
+This endpoint is X's own notifications service, which speaks to a session. An API
+key names a different backend and cannot sign for it, so the run stops before any
+request is made:
+
+```json
+{"ok":false,"error":{"id":"auth","message":"mentions is X's own notifications endpoint: it needs a session, not an API key","hint":"run with --auth-token and --ct0"},"status":0,"body":"","notes":[]}
+```
+
+Exit code `3`. With no credentials at all the refusal is the earlier one, `no
+credentials, so there is nothing to sign in with`.
+
+## A GET with a count, and no body
+
+Mentions is not a GraphQL operation. It is a versioned REST read, so it is the one
+request `bird` sends as a GET, with the count in the query string and no request
+body at all:
+
+```sh
+bird mentions --count 3 --auth-token … --ct0 … --web-bearer … --dry-run --json
+```
+
+```json
+{"ok":true,"verb":"mentions","status":0,"data":{
+  "method":"GET",
+  "url":"https://x.com/i/api/2/notifications/mentions.json?count=3",
+  "headers":[{"name":"authorization","value":"Bearer …"},{"name":"x-csrf-token","value":"…"},{"name":"cookie","value":"auth_token=…; ct0=…"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],
+  "body":"",
+  "parts":[],
+  "timeout_ms":15000,
+  "curl":["curl","-sS","https://x.com/i/api/2/notifications/mentions.json?count=3","-X","GET","-H","authorization: Bearer …","--max-time","15","--write-out","%{http_code}"]
+},"notes":[]}
+```
+
+Two details are deliberate and worth knowing:
+
+- **No `content-type` header.** The upload request and this read are the two
+  requests with no JSON body, and neither declares one. Claiming a JSON body on a
+  GET is a lie a server is free to act on.
+- **The url is a setting.** `--mentions-url` defaults to
+  `https://x.com/i/api/2/notifications/mentions.json`, which is what lets the
+  end-to-end test point this at a stand-in and check what actually went over the
+  socket.
+
+## Count
+
+`--count` is clamped to **1..50**, default 10, exactly as for `search`. The clamp
+is silent because the answer is still a valid timeline; a value that is not a
+number at all is refused by name with exit code `2`.
+
+## The answer
+
+The payload is the timeline as X sends it. The envelope wraps it:
+
+```json
+{"ok":true,"verb":"mentions","status":200,"data":{"globalObjects":{"tweets":{"11":{"full_text":"@bird hello"}}},"timeline":{"instructions":[]}},"notes":[]}
+```
+
+A terminal prints the `globalObjects` data indented instead; `--json` is what a
+script should pass.

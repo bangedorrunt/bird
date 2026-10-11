@@ -1,0 +1,96 @@
+---
+title: Agents
+description: The JSON envelope, the exit codes, the machine-readable schema, and how to dry-run or fixture a request so an agent can check its work.
+---
+
+# Agents
+
+Everything an agent needs is one envelope on stdout, one exit code, and a schema
+it can read before it types anything.
+
+```sh
+bird schema --json | jq '.data.verbs, .data.flags, .data.exit_codes'
+```
+
+## Output is an envelope, or prose, never both
+
+One JSON envelope goes on stdout when `--json` is passed, when `BIRD_JSON=1` is
+set, or when `TERM` is empty or `dumb`. Otherwise a terminal gets the payload
+indented, and notes go to stderr so a warning never lands in the middle of the
+data a script is reading.
+
+**`TERM` is a proxy, not a fact.** Bend has no `isatty`, and the process that runs
+`curl` is given pipes, so nothing can ask whether this process's stdout is a
+terminal. A script that pipes `bird` while `TERM` is set in the environment gets
+the terminal rendering. Pass `--json` and do not rely on the detection.
+
+## The success envelope
+
+```json
+{"ok":true,"verb":"search","status":200,"data":{"…":"X's payload"},"notes":[]}
+```
+
+| field | meaning |
+| --- | --- |
+| `ok` | `true` on success, `false` on failure. |
+| `verb` | The verb that ran. Absent on a usage error, because the command line may not have named one yet. |
+| `status` | The HTTP status, or `0` when no request was made. |
+| `data` | The parsed body, or `null` for a run that did something rather than fetched something (a write, `check`). |
+| `notes` | Warnings, each a line. `curl`'s own words for a connection that never happened arrive here. |
+
+## The failure envelope
+
+```json
+{"ok":false,"error":{"id":"rate_limited","message":"Rate limit exceeded","hint":"X is rate limiting this account: back off before retrying","retryable":true},"status":429,"body":"Rate limit exceeded","notes":[]}
+```
+
+`error.id` is stable API: `usage`, `auth`, `not_found`, `rate_limited`,
+`network`, `upstream`, `internal`. Branch on it, not on prose. `body` keeps X's
+own answer, which is often the useful part of a 4xx.
+
+`error.retryable` is `true` for exactly `rate_limited`, `network` and `upstream`,
+so a caller that wants to back off and retry reads one boolean instead of keeping
+its own copy of that table. Nothing in a run retries by itself.
+
+## Exit codes
+
+| 0 | 2 | 3 | 4 | 5 | 6 | 7 | 1 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ok | usage | auth | not found | rate limited | network | upstream | internal |
+
+The exit code and `error.id` agree, so a shell can branch without reading either
+output shape.
+
+## Check before you act
+
+Three ways to see what a run will do without it doing anything:
+
+```sh
+bird tweet --text hi … --dry-run --json     # the request it would send, and nothing else
+bird read 1234567890 --fixture tweet.json --json  # answer from a file, through the live path
+bird check --json                           # what the settings resolved to; sends nothing
+```
+
+`--dry-run` prints the request as data, including the exact `curl` argv, so a
+human can paste that command into a shell and inspect it by hand. A media write
+prints a plan instead (see [Media](./media.mdx)).
+
+## Reading work back out
+
+- `search` and `mentions` count: `--count` is clamped to 1..50, default 10.
+- A tweet id or url is accepted anywhere a target is wanted; the request carries
+  the extracted id, never the whole url.
+- A body that is not JSON is kept in `body`, with a note saying why `data` is
+  null, so an HTML error page is not thrown away.
+- A media write that fails part way through names the media ids already uploaded
+  in `notes`, because those uploads are still good: a retry can reuse them
+  instead of sending the same bytes again.
+
+## Refusals are named
+
+An unknown flag, a flag without its value, a verb without its argument, a stray
+word, a config key the flag table does not know, a content flag in a config file,
+a target with no id in it, and a media write asked to answer from `--fixture` are
+all refused by name with exit code `2`. An agent that misspells a flag and gets
+silence cannot tell that from a request that asked for nothing, so silence is
+never the answer.

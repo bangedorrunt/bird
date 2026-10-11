@@ -1,0 +1,48 @@
+---
+title: bird guides
+description: Task-shaped guides for posting, replying, uploading media, reading tweets and reading mentions with bird, plus the contract an agent sees.
+---
+
+# bird guides
+
+`bird` posts and reads X from a terminal, a shell script or an agent. One verb,
+some flags, and either a readable rendering or one JSON envelope.
+
+```sh
+bird tweet --text "hello" --media shot.png --alt "a screenshot"
+bird mentions --count 20
+bird read https://x.com/someone/status/1234567890 --json
+```
+
+Before there is a built binary, the program is run through `bend`, and
+everything after `--` is its argv:
+
+```sh
+bend src/effects.bend -- tweet --text "hello" --dry-run --json
+```
+
+## Start here
+
+| guide | what it covers |
+| --- | --- |
+| [Setup](./setup.mdx) | Credentials, engines, the config file, environment variables, precedence, and `check`. |
+| [Writing](./writing.mdx) | `tweet` and `reply`: text, `--text-file`, empty writes, and `--dry-run`. |
+| [Media](./media.mdx) | `--media` and `--alt`: the rules, the multi-request flow, and what the dry run shows. |
+| [Reading](./reading.mdx) | `read`, `replies`, `thread` and `search`, and how a tweet id is read out of a url. |
+| [Mentions](./mentions.mdx) | `mentions`, `--count`, and why it needs a session rather than an API key. |
+| [Agents](./agents.mdx) | The JSON envelope, the exit codes, `--fixture`, `schema`, and how to check a run before it happens. |
+
+## Two things to know first
+
+**Nothing is sent until you ask for it.** `--dry-run` prints the exact `curl`
+command line the run would hand to `curl`, for every request it would make. A
+media write is several requests, and the dry run shows the whole plan.
+
+**A failure is data, not prose.** Every failure carries a stable id (`usage`,
+`auth`, `not_found`, `rate_limited`, `network`, `upstream`, `internal`), a
+one-line message, and a hint saying what to do. The exit code is the same
+vocabulary: `2` for usage, `3` for auth, `4` not found, `5` rate limited, `6`
+network, `7` upstream, `1` internal, `0` ok.
+
+The record of *why* the program is shaped this way is
+`docs/decisions/0001-design-bird.md`.
