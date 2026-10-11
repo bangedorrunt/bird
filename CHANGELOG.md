@@ -12,6 +12,14 @@ log starts at `0.3.0`.
 
 ### Added
 
+- `scripts/check-beads-ledger.sh`: fails closed on a beads-ledger row-set
+  regression before `.beads/` is committed. `.beads/issues.jsonl` is a
+  full-snapshot export, so a worktree writing it from its own older sqlite drops
+  the beads another lane closed; a gate verdict can be lost the same way, and a
+  lost verdict is what makes a close unprovable. It also reads commit subjects, so
+  a bead a commit claims to close cannot be sitting open. `--self-test` exercises
+  the guard itself against its own fixtures, `--base origin/main` is the CI shape,
+  and `--force "<why>"` publishes a deliberate reopen loudly.
 - `install.sh`: compiles the CLI and installs it, with `PREFIX=` to choose where
   (default `~/.local/bin`) and a `bird version` check of what was installed. The
   build happens in a temporary directory and is moved into place, so a failed build

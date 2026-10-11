@@ -26,10 +26,19 @@ bend src/effects.bend --check-only        # the program and its imports type-che
 bend PROOF.bend                           # laws gate the build
 bend tests/argv_test.bend                 # offline suites: argv, api, http, json, scan, bundle, update
 bash tests/e2e.sh                         # the seam: real socket, stand-in server, exit codes
+scripts/check-beads-ledger.sh --history   # the ledger: no bead row dropped or reopened
+scripts/check-beads-ledger.sh --self-test # and the guard itself is exercised
 bend src/effects.bend -- check --json     # run it; everything after `--` is argv
 ./install.sh                             # compile the CLI (needs clang) and install it on PATH
 bird read 12345 --json                    # then call the CLI itself
 ```
+
+`.beads/issues.jsonl` is a full-snapshot export, so any worktree that writes it from
+its own older sqlite drops the beads other lanes closed in parallel, and the loss
+becomes durable the moment it is committed. `scripts/check-beads-ledger.sh` runs
+before `git add .beads/` for that reason: it fails closed (exit 1) when a row is
+dropped, a closed bead reads anything else, a gate verdict disappears, or a commit
+subject claims a close the ledger does not show.
 
 The offline suites stop at the pure core. Anything that crosses the fold →
 interpreter seam (argv handed to curl, status split off the body, envelope and
