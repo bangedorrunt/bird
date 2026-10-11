@@ -397,6 +397,49 @@ def whoami_raw_args() -> List<&2, String>:
 def search_args() -> List<&2, String>:
   "search" <> ("hi" <> creds())
 
+# The bookmark lists. Three tweets are asked for so that one page cannot answer it:
+# a page holds as many as X sends, and this run must still open a second request.
+def bookmarks_args() -> List<&2, String>:
+  "bookmarks" <> ("--count" <> ("3" <> ("--op-bookmarks" <> ("OPBM" <> creds()))))
+
+def bookmarks_raw_args() -> List<&2, String>:
+  "bookmarks" <> ("--raw" <> ("--count" <> ("3" <> ("--op-bookmarks" <> ("OPBM" <> creds())))))
+
+def bookmarks_many_args() -> List<&2, String>:
+  "bookmarks" <> ("--count" <> ("200" <> ("--op-bookmarks" <> ("OPBM" <> creds()))))
+
+def bookmarks_over_args() -> List<&2, String>:
+  "bookmarks" <> ("--count" <> ("501" <> ("--op-bookmarks" <> ("OPBM" <> creds()))))
+
+def search_over_args() -> List<&2, String>:
+  "search" <> ("hi" <> ("--count" <> ("51" <> creds())))
+
+# ── the bookmark timeline, in pages ─────────────────────────────────────
+#
+# A live page, shrunk: the tweets are entries in `instructions[0].entries`, the
+# envelope nests as `data.data.bookmark_timeline_v2`, and the page ends with the
+# bottom cursor entry whose `value` is the token the next request carries. A body
+# without that nesting would be a body X never sends, and one with the cursor at the
+# top level would pass a reader that had learned the wrong path.
+def bookmarks_page_one() -> String:
+  "{\"data\":{\"data\":{\"bookmark_timeline_v2\":{\"timeline\":{\"instructions\":[{\"entries\":["
+  ++ "{\"entryId\":\"tweet-1\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"1\",\"legacy\":{\"full_text\":\"page one a\",\"id_str\":\"1\"}}}}}},"
+  ++ "{\"entryId\":\"tweet-2\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"2\",\"legacy\":{\"full_text\":\"page one b\",\"id_str\":\"2\"}}}}}},"
+  ++ "{\"entryId\":\"cursor-bottom-1\",\"content\":{\"entryType\":\"TimelineTimelineCursor\",\"cursorType\":\"Bottom\",\"value\":\"CURSOR1\"}}"
+  ++ "]}]}}}}}"
+
+def bookmarks_page_two() -> String:
+  "{\"data\":{\"data\":{\"bookmark_timeline_v2\":{\"timeline\":{\"instructions\":[{\"entries\":["
+  ++ "{\"entryId\":\"tweet-3\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"3\",\"legacy\":{\"full_text\":\"page two a\",\"id_str\":\"3\"}}}}}},"
+  ++ "{\"entryId\":\"cursor-bottom-2\",\"content\":{\"entryType\":\"TimelineTimelineCursor\",\"cursorType\":\"Bottom\",\"value\":\"CURSOR2\"}}"
+  ++ "]}]}}}}}"
+
+def bookmarks_last_page() -> String:
+  "{\"data\":{\"data\":{\"bookmark_timeline_v2\":{\"timeline\":{\"instructions\":[{\"entries\":["
+  ++ "{\"entryId\":\"tweet-4\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"4\",\"legacy\":{\"full_text\":\"the last saved one\",\"id_str\":\"4\"}}}}}},"
+  ++ "{\"entryId\":\"tweet-5\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"5\",\"legacy\":{\"full_text\":\"and that is all\",\"id_str\":\"5\"}}}}}}"
+  ++ "]}]}}}}}"
+
 def tweet_file_args() -> List<&2, String>:
   "tweet" <> ("--text-file" <> ("t.txt" <> ("--op-create-tweet" <> ("OPT" <> creds()))))
 
@@ -905,3 +948,54 @@ def main() -> IO(Unit):
     +fr3 : D.Step = proc_turn(5, 0, "auth_token|only-one\n", SNil{}, model_of(fr1))
     ok("a session with only half a cookie is refused", String.eq(failed_code(fr3), "usage"))
     ok("...naming the database as the thing to check", String.contains(failed_hint(fr3), "--cookie-db"))
+
+    # ── 28. a bookmark timeline is read a page at a time ────────────────
+    #
+    # X answers a page of at most 50 tweets and a bottom cursor for the next one,
+    # and the fold follows it. Before this, `bookmarks --count 3` sent one request,
+    # answered with whatever one page held, and said nothing about the rest -- so a
+    # caller asking for two pages got one every run, forever.
+    +pg1 : D.Step = boot(bookmarks_args(), SNil{})
+    ok("a bookmark read opens with one page", U32.is_eq(http_count(cmds_of(pg1), 0), 1))
+    ok("...which carries no cursor at all", Bool.not(String.contains(cmd_body(first_cmd(pg1)), "cursor")))
+
+    +pg2 : D.Step = answer(7, 0, 200, bookmarks_page_one(), SNil{}, model_of(pg1))
+    ok("a page short of the ask opens the next one", U32.is_eq(http_count(cmds_of(pg2), 0), 1))
+    ok("...against the same operation", String.contains(cmd_url(first_cmd(pg2)), "Bookmarks"))
+    ok("...carrying the token the page ended with", String.contains(cmd_body(first_cmd(pg2)), "CURSOR1"))
+    ok("...and the run waits for it rather than finishing", String.eq(phase_tag(pg2), "request"))
+
+    +pg3 : D.Step = answer(7, 0, 200, bookmarks_page_two(), SNil{}, model_of(pg2))
+    ok("the page that meets the ask ends the run", String.eq(phase_tag(pg3), "done"))
+    ok("...with the ask in it, not one page of it", U32.is_eq(J.count(J.get_or_null(payload_of(model_of(pg3)), "tweets")), 3))
+    ok("...first page first", String.contains(text_in_step(pg3), "page one a"))
+    ok("...and the second page after it", String.contains(text_in_step(pg3), "page two a"))
+    ok("...with nothing said about a short answer", String.eq(notes_text(pg3), SNil{}))
+
+    # X offering no next page ends the walk, and the answer says how short it was:
+    # a stream that ended and a stream that was cut off look identical otherwise.
+    +pg4 : D.Step = answer(7, 0, 200, bookmarks_last_page(), SNil{}, model_of(pg1))
+    ok("a page with no cursor ends the run", String.eq(phase_tag(pg4), "done"))
+    ok("...saying how many were asked for", String.contains(notes_text(pg4), "asked for 3 bookmarks"))
+    ok("...and how many X had", String.contains(notes_text(pg4), "X had 2"))
+
+    # `--raw` is the response as X sent it, and one page is a response, so the flag
+    # keeps meaning "what the wire said" rather than "every page folded together".
+    +pg5 : D.Step = boot(bookmarks_raw_args(), SNil{})
+    +pg6 : D.Step = answer(7, 0, 200, bookmarks_page_one(), SNil{}, model_of(pg5))
+    ok("--raw answers one page and stops", String.eq(phase_tag(pg6), "done"))
+    ok("...with the envelope as it arrived", String.contains(text_in_step(pg6), "bookmark_timeline_v2"))
+
+    # The ceiling is a verb's own: bookmarks reads on across pages, so it takes a
+    # number a page could not hold, and one above its ceiling is refused rather than
+    # rounded down -- rounding is what made the old truncation invisible.
+    +pg7 : D.Step = boot(bookmarks_many_args(), SNil{})
+    ok("bookmarks takes a count larger than a page", Bool.and(String.eq(phase_tag(pg7), "request"), String.contains(cmd_body(first_cmd(pg7)), "\"count\":200")))
+
+    +pg8 : D.Step = boot(bookmarks_over_args(), SNil{})
+    ok("a count past the ceiling is refused", String.eq(failed_code(pg8), "usage"))
+    ok("...naming the verb and the range", String.contains(failed_message(pg8), "bookmarks takes --count 1..500"))
+    ok("...and nothing is sent", U32.is_eq(http_count(cmds_of(pg8), 0), 0))
+
+    +pg9 : D.Step = boot(search_over_args(), SNil{})
+    ok("a page-sized verb keeps its own ceiling", String.contains(failed_message(pg9), "search takes --count 1..50"))

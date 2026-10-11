@@ -180,12 +180,29 @@ def Api.search_vars(query: String, count: U32) -> J.Json:
 # carries, and X validates variables before it runs anything; twitter-cli sends
 # exactly these three beside the count, and a live run is what keeps this list
 # honest.
-def Api.bookmarks_vars(count: U32) -> J.Json:
-  J.obj_of(J.pairs4(
-    J.pair("count", J.of_u32(count)),
-    J.pair("includePromotedContent", J.of_bool(False{})),
-    J.pair("latestControlAvailable", J.of_bool(True{})),
-    J.pair("requestContext", J.of_str("launch"))
+#
+# `count` is a PAGE size on X's side, not a total, and the page it answers with is
+# X's own: measured 2026-10-12, an ask of 60 came back as 60, and asks of 100 and of
+# 200 both came back as 97..100, so the page caps near a hundred whatever is asked.
+# A second page is therefore this same request with `cursor` added -- absent rather
+# than empty on the first page, since an empty token is not the request that has no
+# token -- and the same measurement is what showed the pages do not overlap.
+def Api.cursor_var(blank: Bool, +cursor: String) -> List<&2, J.JField>:
+  match blank:
+    case True{}:
+      Nil{}
+    case False{}:
+      J.pair("cursor", J.of_str(cursor)) <> Nil{}
+
+def Api.bookmarks_vars(count: U32, +cursor: String) -> J.Json:
+  J.obj_of(List.append(&2, J.JField,
+    Api.cursor_var(String.is_empty(cursor), cursor),
+    J.pairs4(
+      J.pair("count", J.of_u32(count)),
+      J.pair("includePromotedContent", J.of_bool(False{})),
+      J.pair("latestControlAvailable", J.of_bool(True{})),
+      J.pair("requestContext", J.of_str("launch"))
+    )
   ))
 
 def Api.tweet_vars(+text: String) -> J.Json:
@@ -510,8 +527,8 @@ def Api.gql_verb(
       Api.send(id, Api.gql_url(gql_base, op_detail, "TweetDetail"), Api.session_headers(bearer, ct0, at), Api.body_toggles(op_detail, Api.gql_focal(target), features), timeout_ms)
     case D.VerbSearch{query, count}:
       Api.send(id, Api.gql_url(gql_base, op_search, "SearchTimeline"), Api.session_headers(bearer, ct0, at), Api.body(op_search, Api.search_vars(query, count), features), timeout_ms)
-    case D.VerbBookmarks{count}:
-      Api.send(id, Api.gql_url(gql_base, op_bookmarks, "Bookmarks"), Api.session_headers(bearer, ct0, at), Api.body(op_bookmarks, Api.bookmarks_vars(count), features), timeout_ms)
+    case D.VerbBookmarks{count, cursor}:
+      Api.send(id, Api.gql_url(gql_base, op_bookmarks, "Bookmarks"), Api.session_headers(bearer, ct0, at), Api.body(op_bookmarks, Api.bookmarks_vars(count, cursor), features), timeout_ms)
     case D.VerbTweet{text, media}:
       Api.media_guard(media, Api.send(id, Api.gql_url(gql_base, op_tweet, "CreateTweet"), Api.session_headers(bearer, ct0, at), Api.body(op_tweet, Api.tweet_vars(text), features), timeout_ms))
     case D.VerbReply{target, text, media}:
@@ -583,8 +600,8 @@ def Api.sweet_verb(
       Api.media_guard(media, Api.send(id, op_tweet, Api.key_headers(key), Api.sweet_body(op_tweet, Api.tweet_vars(text)), timeout_ms))
     case D.VerbReply{target, text, media}:
       Api.media_guard(media, Api.send(id, op_tweet, Api.key_headers(key), Api.sweet_body(op_tweet, Api.reply_vars(text, target)), timeout_ms))
-    case D.VerbBookmarks{count}:
-      Api.send(id, op_bookmarks, Api.key_headers(key), Api.sweet_body(op_bookmarks, Api.bookmarks_vars(count)), timeout_ms)
+    case D.VerbBookmarks{count, cursor}:
+      Api.send(id, op_bookmarks, Api.key_headers(key), Api.sweet_body(op_bookmarks, Api.bookmarks_vars(count, cursor)), timeout_ms)
     case D.VerbMentions{count}:
       PlanStop{Api.mentions_needs_session()}
     case _:

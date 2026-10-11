@@ -60,9 +60,11 @@ Two details are deliberate and worth knowing:
 
 ## Count
 
-`--count` is clamped to **1..50**, default 10, exactly as for `search`. The clamp
-is silent because the answer is still a valid timeline; a value that is not a
-number at all is refused by name with exit code `2`.
+`--count` is **1..50**, default 10, exactly as for `search` — one timeline page,
+which is all this endpoint answers. A value outside that range is refused by name
+with exit code `2` rather than rounded down: `bookmarks` reads on across pages and
+takes a larger number, so a count that could not be honored is a mistake worth
+hearing about rather than a timeline to hand back.
 
 ## The answer
 

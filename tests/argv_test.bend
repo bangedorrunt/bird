@@ -109,7 +109,7 @@ def count_of(+v: D.Verb) -> U32:
       count
     case D.VerbMentions{count}:
       count
-    case D.VerbBookmarks{count}:
+    case D.VerbBookmarks{count, cursor}:
       count
     case _:
       0

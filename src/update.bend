@@ -333,6 +333,9 @@ def Update.not_json(message: String, +stderr: String) -> List<&2, String>:
 def Update.raw_mode(+m: D.Model) -> Bool:
   D.Items.has_flag(Update.items_in(Update.start_of(m)), "--raw")
 
+# The shaped payload of one answer, by verb. It is written here, above the page
+# walk below, because that walk answers an ordinary verb through it and a def may
+# not call one written later in the file.
 def Update.shaped_verb(+v: D.Verb, +root: J.Json) -> J.Json:
   match v:
     case D.VerbRead{target}:
@@ -343,7 +346,7 @@ def Update.shaped_verb(+v: D.Verb, +root: J.Json) -> J.Json:
       T.Tweets.list_in(root, SNil{})
     case D.VerbSearch{query, count}:
       T.Tweets.list_in(root, SNil{})
-    case D.VerbBookmarks{count}:
+    case D.VerbBookmarks{count, cursor}:
       T.Tweets.list_in(root, SNil{})
     case D.VerbMentions{count}:
       T.Tweets.list_in(root, SNil{})
@@ -351,6 +354,161 @@ def Update.shaped_verb(+v: D.Verb, +root: J.Json) -> J.Json:
       T.Tweets.profile_in(root)
     case _:
       root
+
+# ── a page of a list is not the whole list ──────────────────────────────
+#
+# The bookmark timeline is the one verb X answers in pages: a page carries as many
+# tweets as it was asked for (capped near a hundred) and a bottom cursor for the
+# next one, so `bookmarks --count 200` used to answer one page and stop, with
+# nothing in the answer to say so. The fold follows the cursor until the ask is
+# met, X offers no further page, or a page carries nothing at all -- the three ways
+# this ends, decided here, before the run either sends the next request or answers.
+#
+# The tweets already read are the model's own payload, and the verb carries the
+# token the request being answered was sent with, so an empty token means this
+# answer is the first page and there is nothing behind it to add.
+def Update.payload_in(+m: D.Model) -> J.Json:
+  match m:
+    case D.Model{phase, start, cfg, status, payload, body, exit_code, notes}:
+      payload
+
+def Update.verb_cursor(+v: D.Verb) -> String:
+  match v:
+    case D.VerbBookmarks{count, cursor}:
+      cursor
+    case _:
+      SNil{}
+
+def Update.verb_count(+v: D.Verb) -> U32:
+  match v:
+    case D.VerbBookmarks{count, cursor}:
+      count
+    case _:
+      0
+
+def Update.is_bookmarks(+v: D.Verb) -> Bool:
+  match v:
+    case D.VerbBookmarks{count, cursor}:
+      True{}
+    case _:
+      False{}
+
+# The pages already folded, read back out of the answer they were shaped into: the
+# payload keeps one meaning whether the run is one page in or finished, so an
+# intermediate page is the same object a finished run would have shown.
+def Update.carried_on(continuation: Bool, +m: D.Model) -> List<&2, J.Json>:
+  match continuation:
+    case True{}:
+      J.items(J.get_or_null(Update.payload_in(m), "tweets"))
+    case False{}:
+      Nil{}
+
+def Update.carried(+m: D.Model) -> List<&2, J.Json>:
+  Update.carried_on(Bool.not(String.is_empty(Update.verb_cursor(Update.verb_of(m)))), m)
+
+# `count` is a total for this verb, so the walk ends on the first page that meets
+# it. A page with nothing in it and a live cursor would be asked for forever, so an
+# empty page ends it as surely as a missing token does -- and every page that does
+# continue carries at least one tweet, which is what bounds the walk by `count`
+# pages rather than by a page limit of its own.
+def Update.asked_more(got: U32, count: U32) -> Bool:
+  U32.is_lt(got, count)
+
+def Update.page_more(more: Bool, +next: String, had: U32) -> Bool:
+  Bool.and(more, Bool.and(Bool.not(String.is_empty(next)), U32.is_gt(had, 0)))
+
+# X having fewer bookmarks than were asked for is a fact the caller needs: a stream
+# that ended and a stream that was cut off look identical in the payload otherwise.
+def Update.short_note(short: Bool, +got: U32, +asked: U32) -> List<&2, String>:
+  match short:
+    case True{}:
+      ("asked for " ++ U32.show(asked) ++ " bookmarks, X had " ++ U32.show(got)) <> Nil{}
+    case False{}:
+      Nil{}
+
+# The continuation's command. This is `Update.sending_on` in two arms rather than a
+# call to it: that def is written after this one -- the answer side of the fold comes
+# first in this file -- and a def may not call one written later.
+def Update.page_plan(+p: Api.Plan, +m: D.Model) -> D.Step:
+  match p:
+    case Api.PlanSend{cmd}:
+      D.mk_step(D.Model.waiting(m, Update.id_request()), cmd <> Nil{})
+    case Api.PlanStop{error}:
+      D.mk_step(D.Model.failed(m, error), D.no_cmds())
+
+# The next page: the same verb carrying the token this page ended with, with the
+# tweets read so far left in the payload so the answer that closes the run holds all
+# of them. The plan is built from the new configuration, so the request that goes
+# out is the one `--dry-run` prints for that verb.
+def Update.bookmarks_more(+m: D.Model, count: U32, +all: List<&2, J.Json>, +next: String) -> D.Step:
+  +next_m : D.Model = D.Model.with_verb(D.Model.with_payload(m, T.Tweets.list_of(J.arr_of(all))), D.VerbBookmarks{count, next})
+  Update.page_plan(Api.Api.plan(Update.cfg_of(next_m), Update.id_request()), next_m)
+
+# The last page: the answer is what was read across the pages, cut to the ask.
+#
+# X's page is its own size -- it answers up to the `count` it was given and caps a
+# page near a hundred, measured 97..100 for asks of 100 and 200 -- so the page that
+# meets a 100-ask can carry 99 more than is wanted. The walk stops the moment the
+# ask is met, which bounds what is read to one page past it, and the trim is what
+# makes `--count N` mean N rather than "N plus whatever the last page held". The
+# note counts what X HAD, not what was kept, because "there were only 137" and "137
+# were taken from 293" are different facts and only the first is worth saying.
+def Update.bookmarks_last(+m: D.Model, http_status: U32, +count: U32, +all: List<&2, J.Json>, +body: String, +stderr: String) -> D.Step:
+  +got : U32 = U32.from_nat(List.length(&2, J.Json, all))
+  +kept : List<&2, J.Json> = List.take(&2, J.Json, all, U32.to_nat(U32.min(count, got)))
+  D.mk_step(
+    D.Model.answered(
+      m,
+      http_status,
+      T.Tweets.list_of(J.arr_of(kept)),
+      body,
+      List.append(&2, String, Update.short_note(U32.is_lt(got, count), got, count), Update.notes_ok(stderr))
+    ),
+    D.no_cmds()
+  )
+
+def Update.bookmarks_route(more: Bool, +m: D.Model, http_status: U32, +count: U32, +all: List<&2, J.Json>, +next: String, +body: String, +stderr: String) -> D.Step:
+  match more:
+    case True{}:
+      Update.bookmarks_more(m, count, all, next)
+    case False{}:
+      Update.bookmarks_last(m, http_status, count, all, body, stderr)
+
+# One page in: what the page carried, added to what the pages before it carried.
+# `Tweets.list_in` is the fold for a single page, so a page is shaped exactly the way
+# a one-page answer always was and the pages are then joined in X's order.
+def Update.bookmarks_page(+m: D.Model, http_status: U32, +root: J.Json, +body: String, +stderr: String) -> D.Step:
+  +page : List<&2, J.Json> = T.Tweets.list_tweets(root, SNil{})
+  had : U32 = U32.from_nat(List.length(&2, J.Json, page))
+  +count : U32 = Update.verb_count(Update.verb_of(m))
+  +all : List<&2, J.Json> = List.append(&2, J.Json, Update.carried(m), page)
+  +next : String = T.Tweets.bottom_cursor(root)
+  Update.bookmarks_route(
+    Update.page_more(Update.asked_more(U32.from_nat(List.length(&2, J.Json, all)), count), next, had),
+    m,
+    http_status,
+    count,
+    all,
+    next,
+    body,
+    stderr
+  )
+
+def Update.paged_on(bookmarks: Bool, +m: D.Model, http_status: U32, +root: J.Json, +body: String, +stderr: String) -> D.Step:
+  match bookmarks:
+    case True{}:
+      Update.bookmarks_page(m, http_status, root, body, stderr)
+    case False{}:
+      D.mk_step(D.Model.answered(m, http_status, Update.shaped_verb(Update.verb_of(m), root), body, Update.notes_ok(stderr)), D.no_cmds())
+
+# `--raw` is the response as X sent it, and one page is a response: the flag keeps
+# meaning "what the wire said" rather than "every page of it folded together".
+def Update.answer_pages(raw: Bool, +m: D.Model, http_status: U32, +root: J.Json, +body: String, +stderr: String) -> D.Step:
+  match raw:
+    case True{}:
+      D.mk_step(D.Model.answered(m, http_status, root, body, Update.notes_ok(stderr)), D.no_cmds())
+    case False{}:
+      Update.paged_on(Update.is_bookmarks(Update.verb_of(m)), m, http_status, root, body, stderr)
 
 def Update.shaped_on(raw: Bool, +m: D.Model, +root: J.Json) -> J.Json:
   match raw:
@@ -362,7 +520,7 @@ def Update.shaped_on(raw: Bool, +m: D.Model, +root: J.Json) -> J.Json:
 def Update.parsed(+m: D.Model, +p: J.Parsed, http_status: U32, body: String, stderr: String) -> D.Step:
   match p:
     case J.ParsedOk{value}:
-      D.mk_step(D.Model.answered(m, http_status, Update.shaped_on(Update.raw_mode(m), m, value), body, Update.notes_ok(stderr)), D.no_cmds())
+      Update.answer_pages(Update.raw_mode(m), m, http_status, value, body, stderr)
     case J.ParsedErr{message}:
       D.mk_step(D.Model.answered(m, http_status, J.null(), body, Update.not_json(message, stderr)), D.no_cmds())
 
@@ -898,7 +1056,7 @@ def Update.with_file_text(+v: D.Verb, +text: String) -> D.Verb:
 # a flag: `--count` set in the config file or the environment is not readable
 # until both have been read.
 def Update.count_in(+s: D.Start) -> U32:
-  P.Cfg.count_on(Update.items_in(s), Update.env_in(s), Update.rc_in(s), P.Cfg.default_count())
+  P.Cfg.count_for(P.Cfg.verb(Update.items_in(s), D.VerbHelp{}), Update.items_in(s), Update.env_in(s), Update.rc_in(s), P.Cfg.default_count())
 
 # `check` answers without a request, and what it can honestly report is what the
 # settings resolved to: which engine would answer, and where the credentials came
@@ -1248,7 +1406,10 @@ def Update.media_gated_on(+e: Maybe<&2, D.Error>, +v: D.Verb, +m: D.Model, dry: 
 # because it is a typo in the settings rather than a problem with the post: the
 # caller wrote something the program could not understand either way.
 def Update.number_error(+m: D.Model) -> Maybe<&2, D.Error>:
-  P.Cfg.number_error(Update.items_in(Update.start_of(m)), Update.env_in(Update.start_of(m)), Update.rc_in(Update.start_of(m)))
+  P.Err.first(
+    P.Cfg.number_error(Update.items_in(Update.start_of(m)), Update.env_in(Update.start_of(m)), Update.rc_in(Update.start_of(m))),
+    P.Cfg.count_range_error(Update.verb_of(m), P.Cfg.order(Update.items_in(Update.start_of(m)), Update.env_in(Update.start_of(m)), Update.rc_in(Update.start_of(m)), "--count", SNil{}))
+  )
 
 # A target with no id in it is the same class of mistake as a number that is not
 # one: it is in what the caller wrote, so it is refused here, before the media

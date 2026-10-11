@@ -262,7 +262,15 @@ type Verb is Data:
     count: U32,
   }
   VerbMentions{count: U32}
-  VerbBookmarks{count: U32}
+  # `count` is the total the caller asked for, and `cursor` is the page token the
+  # request carries -- empty on the first page. X answers a bookmark timeline one
+  # page at a time, capped near a hundred, with a bottom cursor for the next one, so
+  # a verb that says "200" and a verb that says "the page after this token" are the
+  # same verb twice: the fold replaces the cursor and sends the same verb again.
+  VerbBookmarks{
+    count: U32,
+    cursor: String,
+  }
   VerbWhoami{}
   VerbCheck{}
   # `login` reads the session cookies out of a browser profile and the rotating
@@ -293,7 +301,7 @@ def Verb.name(v: Verb) -> String:
       "search"
     case VerbMentions{count}:
       "mentions"
-    case VerbBookmarks{count}:
+    case VerbBookmarks{count, cursor}:
       "bookmarks"
     case VerbWhoami{}:
       "whoami"
@@ -857,6 +865,15 @@ def Model.with_verb(m: Model, verb: Verb) -> Model:
     case Model{phase, start, cfg, status, payload, body, exit_code, notes}:
       mk_model(phase, start, RunCfg.with_verb(cfg, verb), status, payload, body, exit_code, notes)
 
+# A page that is not the last one keeps what has been folded so far, in the field
+# the finished answer already uses. The alternative -- a second home for the
+# tweets read so far -- is the shape that lets an accumulation and the answer
+# disagree, and every field of this record costs a sweep on the next one added.
+def Model.with_payload(m: Model, payload: J.Json) -> Model:
+  match m:
+    case Model{phase, start, cfg, status, payload_old, body, exit_code, notes}:
+      mk_model(phase, start, cfg, status, payload, body, exit_code, notes)
+
 # An answer arrived and was understood: the run is over and the exit code is 0.
 def Model.answered(m: Model, status: U32, payload: J.Json, body: String, notes: List<&2, String>) -> Model:
   match m:
@@ -923,8 +940,17 @@ def Verb.set_count(+v: Verb, n: U32) -> Verb:
       VerbSearch{query, n}
     case VerbMentions{count_old}:
       VerbMentions{n}
-    case VerbBookmarks{count_old}:
-      VerbBookmarks{n}
+    case VerbBookmarks{count_old, cursor}:
+      VerbBookmarks{n, cursor}
+    case _:
+      v
+
+# The page token the next request carries. Only the bookmark timeline answers with
+# one, so every other verb is unchanged.
+def Verb.set_cursor(+v: Verb, +cursor: String) -> Verb:
+  match v:
+    case VerbBookmarks{count, cursor_old}:
+      VerbBookmarks{count, cursor}
     case _:
       v
 

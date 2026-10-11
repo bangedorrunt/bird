@@ -533,11 +533,83 @@ def Tweets.chosen_on(+every: Bool, +nodes: List<&2, J.Json>, +want: String) -> L
 def Tweets.chosen(+nodes: List<&2, J.Json>, +want: String) -> List<&2, J.Json>:
   Tweets.chosen_on(String.is_empty(want), nodes, want)
 
+# The shaped answer, from the tweets that go in it. One def for the shape rather
+# than one per caller: a run that read several pages of a timeline hands them in
+# together, and a run that read one page hands in that page's, and both answers
+# are the same object.
+def Tweets.list_of(+tweets: J.Json) -> J.Json:
+  J.obj_of(J.pairs1(J.pair("tweets", tweets)))
+
+# The same tweets as a list. A run that read several pages has to join them before
+# it answers, and that join is a list operation, so the page is read as a list here
+# and shaped once at the end rather than being shape-then-unshape.
+def Tweets.list_tweets(+root: J.Json, +want: String) -> List<&2, J.Json>:
+  J.items(Tweets.each(Tweets.chosen(Tweets.find(root), want), root, Nil{}))
+
 def Tweets.list_in(+root: J.Json, +want: String) -> J.Json:
-  J.obj_of(J.pairs1(J.pair("tweets", Tweets.each(Tweets.chosen(Tweets.find(root), want), root, Nil{}))))
+  Tweets.list_of(Tweets.each(Tweets.chosen(Tweets.find(root), want), root, Nil{}))
 
 def Tweets.count_in(+payload: J.Json) -> U32:
   J.count(Tweets.dig1(payload, "tweets"))
+
+# ── the next page ───────────────────────────────────────────────────────
+#
+# X answers a bookmark timeline one page at a time. The bottom of a page carries a
+# cursor entry, and that entry's `value` is the token the next request sends:
+#
+#   {"entryId":"cursor-bottom-…","content":{"entryType":"TimelineTimelineCursor",
+#    "cursorType":"Bottom","value":"HBaW8/eR0e6XhjQAAA=="}}
+#
+# This is a walk rather than a fixed path because the envelope holding that entry
+# (`data.data.bookmark_timeline_v2.timeline.instructions[0].entries`) has moved
+# before and the entry itself has not: a cursor is a cursor wherever it sits, and a
+# path would report "no next page" the day X moves the timeline again. An empty
+# answer means exactly that -- no next page -- which is what stops the fold.
+#
+# One recursive def, on a field of the node it matched, so it terminates the way
+# `Tweets.walk` does. The first token found wins: a page has one bottom cursor, and
+# a response that carried two would be a shape this reader has not seen.
+def Tweets.is_bottom_cursor(+c: J.Json) -> Bool:
+  Bool.and(
+    String.eq(J.text(Tweets.dig1(c, "entryType")), "TimelineTimelineCursor"),
+    String.eq(J.text(Tweets.dig1(c, "cursorType")), "Bottom")
+  )
+
+def Tweets.cursor_first(blank: Bool, +candidate: String, +so_far: String) -> String:
+  match blank:
+    case True{}:
+      candidate
+    case False{}:
+      so_far
+
+def Tweets.cursor_candidate(answers: Bool, +value: J.Json) -> String:
+  match answers:
+    case True{}:
+      J.text(Tweets.dig1(value, "value"))
+    case False{}:
+      SNil{}
+
+# A member named `content` whose value is a bottom cursor is the answer; everything
+# else keeps whatever the subtree already found, so the accumulator survives a
+# descent into a node that holds nothing.
+def Tweets.cursor_found(+key: String, +value: J.Json, +so_far: String) -> String:
+  Tweets.cursor_first(
+    String.is_empty(so_far),
+    Tweets.cursor_candidate(Bool.and(String.eq(key, "content"), Tweets.is_bottom_cursor(value)), value),
+    so_far
+  )
+
+def Tweets.cursor_walk(+j: J.Json, +so_far: String) -> String:
+  match j:
+    case J.JsonObj{key, value, tail}:
+      Tweets.cursor_walk(tail, Tweets.cursor_found(key, value, Tweets.cursor_walk(value, so_far)))
+    case J.JsonArr{head, tail}:
+      Tweets.cursor_walk(tail, Tweets.cursor_walk(head, so_far))
+    case _:
+      so_far
+
+def Tweets.bottom_cursor(+root: J.Json) -> String:
+  Tweets.cursor_walk(root, SNil{})
 
 # ── one profile ─────────────────────────────────────────────────────────
 #

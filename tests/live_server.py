@@ -81,6 +81,11 @@ BODIES = {
                   '{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":[{"content":'
                   '{"itemContent":{"tweet_results":{"result":{"rest_id":"6060",'
                   '"legacy":{"full_text":"a saved tweet","id_str":"6060"}}}}}}]}]}}}}'),
+    # The same timeline when it does NOT fit one page: two tweets and a bottom
+    # cursor, then the page that cursor names. It has a route of its own because
+    # `/bookmarks` is the one-page case a caller sees when X has nothing more to
+    # send, and a stateful answer there would hide that.
+    "/bookmarks-paged": (200, "application/json", "a paged timeline is built per request"),
     "/detail": (404, "application/json", '{"errors":[{"message":"No tweet found"}]}'),
     "/search": (429, "text/plain", "Rate limit exceeded"),
     "/tweet": (500, "application/json", '{"errors":[{"message":"Internal error"}]}'),
@@ -123,6 +128,35 @@ BODIES = {
 }
 
 
+# The two pages the paged route answers with, in order: page one carries the cursor
+# whose token page two is asked for, and page two has no cursor because that is the
+# end of the timeline.
+def paged_page(n: int) -> str:
+    if n == 0:
+        return ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":['
+                '{"entryId":"tweet-6061","content":{"itemContent":{"tweet_results":{"result":'
+                '{"rest_id":"6061","legacy":{"full_text":"the first saved","id_str":"6061"}}}}}},'
+                '{"entryId":"tweet-6062","content":{"itemContent":{"tweet_results":{"result":'
+                '{"rest_id":"6062","legacy":{"full_text":"the second saved","id_str":"6062"}}}}}},'
+                '{"entryId":"cursor-bottom-1","content":{"entryType":"TimelineTimelineCursor",'
+                '"cursorType":"Bottom","value":"LIVECURSOR1"}}]}]}}}}}')
+    return ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":['
+            '{"entryId":"tweet-6063","content":{"itemContent":{"tweet_results":{"result":'
+            '{"rest_id":"6063","legacy":{"full_text":"the third saved","id_str":"6063"}}}}}}]}]}}}}}')
+
+
+# How many times each route has been asked, so the paged one can answer the second
+# request with the page the cursor names. Process-wide and per route: one case in
+# `tests/e2e.sh` reads two pages, and nothing else reads this route at all.
+PAGED_SEEN = {}
+
+
+def paged_route_n(route: str) -> int:
+    n = PAGED_SEEN.get(route, 0)
+    PAGED_SEEN[route] = n + 1
+    return n
+
+
 BUNDLE_PATH = "/client-web/main.livetest.js"
 
 # The 20 leading `A`s are not decoration: the real bearer begins with them, and
@@ -154,9 +188,13 @@ class Handler(BaseHTTPRequestHandler):
         length = int(self.headers.get("content-length") or 0)
         body = self.rfile.read(length).decode("utf-8", "replace")
         self.record(body, length)
-        status, ctype, text = BODIES.get(route_of(self.path), (404, "application/json",
-                                                              '{"errors":[{"message":"no such route"}]}'))
-        self.answer(status, ctype, text)
+        route = route_of(self.path)
+        if route == "/bookmarks-paged":
+            self.answer(200, "application/json", paged_page(paged_route_n(route)))
+        else:
+            status, ctype, text = BODIES.get(route, (404, "application/json",
+                                                     '{"errors":[{"message":"no such route"}]}'))
+            self.answer(status, ctype, text)
 
     def do_GET(self):
         self.record("", 0)

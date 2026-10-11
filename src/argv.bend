@@ -289,7 +289,7 @@ def Argv.verb_of(word: String) -> Maybe<&2, D.Verb>:
     case "mentions":
       Some{D.VerbMentions{P.Cfg.default_count()}}
     case "bookmarks":
-      Some{D.VerbBookmarks{P.Cfg.default_count()}}
+      Some{D.VerbBookmarks{P.Cfg.default_count(), SNil{}}}
     case "whoami":
       Some{D.VerbWhoami{}}
     case "check":
@@ -488,8 +488,8 @@ def Argv.set_verb_count(+v: D.Verb, +count: U32) -> D.Verb:
       D.VerbSearch{query, count}
     case D.VerbMentions{old}:
       D.VerbMentions{count}
-    case D.VerbBookmarks{old}:
-      D.VerbBookmarks{count}
+    case D.VerbBookmarks{old, cursor}:
+      D.VerbBookmarks{count, cursor}
     case _:
       v
 
@@ -510,7 +510,7 @@ def Argv.set_count(items: List<&2, D.Item>, +count: U32) -> List<&2, D.Item>:
 def Argv.finish(+a: Argv) -> Argv:
   match a:
     case ArgvOk{items}:
-      ArgvOk{Argv.set_count(items, P.Cfg.count(items))}
+      ArgvOk{Argv.set_count(items, P.Cfg.count_for(P.Cfg.verb(items, D.VerbHelp{}), items, Nil{}, Nil{}, P.Cfg.default_count()))}
     case ArgvBad{error}:
       a
 

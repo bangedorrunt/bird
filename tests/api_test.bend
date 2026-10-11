@@ -384,17 +384,30 @@ def main() -> IO(Unit):
 
     # Bookmarks: the web timeline's own variables, at the configured operation.
     ok("bookmarks posts to Bookmarks with the configured query id", String.eq(
-      url_of(gql_req(D.VerbBookmarks{25}, "b")),
+      url_of(gql_req(D.VerbBookmarks{25, SNil{}}, "b")),
       "https://x.com/i/api/graphql/opBM/Bookmarks"
     ))
     ok("bookmarks carries its count", String.contains(
-      body_of(gql_req(D.VerbBookmarks{25}, "b")),
+      body_of(gql_req(D.VerbBookmarks{25, SNil{}}, "b")),
       "\"count\":25"
     ))
     ok("bookmarks carries the web client's launch context", String.contains(
-      body_of(gql_req(D.VerbBookmarks{25}, "b")),
+      body_of(gql_req(D.VerbBookmarks{25, SNil{}}, "b")),
       "\"requestContext\":\"launch\""
     ))
+    # The second page is the same request with the token the first page ended with.
+    # A page token that was not read is a page nobody ever asks for, so this is the
+    # one assertion that keeps the walk from silently being one page again.
+    ok("a bookmarks page carries the cursor it was given", String.contains(
+      body_of(gql_req(D.VerbBookmarks{25, "TOKEN=="}, "b")),
+      "\"cursor\":\"TOKEN==\""
+    ))
+    # And the first page has no `cursor` member at all: X validates the variables it
+    # is handed, and an empty token is not the same request as no token.
+    ok("a first bookmarks page sends no cursor", Bool.not(String.contains(
+      body_of(gql_req(D.VerbBookmarks{25, SNil{}}, "b")),
+      "cursor"
+    )))
 
     # Sweetistics: the same operation names, at the base url, signed with the key.
     ok("a keyed run reaches the sweetistics route", String.eq(

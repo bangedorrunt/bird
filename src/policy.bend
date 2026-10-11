@@ -451,12 +451,25 @@ def Cfg.count_or(m: Maybe<&2, U32>) -> U32:
     case Some{n}:
       n
 
-def Cfg.read_count(+text: String, fallback: U32) -> U32:
+# The most `--count` may ask for, and it depends on the verb. X answers a bookmark
+# timeline one page at a time with a cursor for the next, so `bookmarks` follows the
+# cursor and its `--count` is a TOTAL rather than a page: 500 is a few pages, which
+# is more than a stream read until it dries up needs and few enough that a mistyped
+# number cannot become a long crawl. Search and mentions are read one page at a time
+# and nothing asks them for a second, so a page is their whole ceiling.
+def Cfg.count_ceiling(+v: D.Verb) -> U32:
+  match v:
+    case D.VerbBookmarks{count, cursor}:
+      500
+    case _:
+      50
+
+def Cfg.read_count_for(+v: D.Verb, +text: String, fallback: U32) -> U32:
   match text:
     case "":
       fallback
     case _:
-      U32.clamp(Cfg.count_or(U32.read(text)), 1, 50)
+      U32.clamp(Cfg.count_or(U32.read(text)), 1, Cfg.count_ceiling(v))
 
 # A write with nothing to say would send an empty tweet, and X's refusal would
 # arrive as a confusing 400. The text may be in the verb or in the file the run
@@ -491,11 +504,8 @@ def Cfg.no_text_error(+v: D.Verb) -> D.Error:
 # that is refused: `--count` and `--timeout-ms` are values rather than flags, so
 # they are read here instead of being baked into the verb the moment the command
 # line is parsed.
-def Cfg.count_on(+items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&2, D.Item>, fallback: U32) -> U32:
-  Cfg.read_count(Cfg.order(items, env, rc, "--count", SNil{}), fallback)
-
-def Cfg.count(items: List<&2, D.Item>) -> U32:
-  Cfg.count_on(items, Nil{}, Nil{}, Cfg.default_count())
+def Cfg.count_for(+v: D.Verb, +items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&2, D.Item>, fallback: U32) -> U32:
+  Cfg.read_count_for(v, Cfg.order(items, env, rc, "--count", SNil{}), fallback)
 
 def Cfg.timeout_or(m: Maybe<&2, U32>) -> U32:
   match m:
@@ -522,9 +532,36 @@ def Cfg.timeout_on(+items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&
 def Cfg.number_wants(name: String) -> String:
   match name:
     case "--count":
-      "give it a whole number, 1..50"
+      "give it a whole number, 1 or more"
     case _:
       "give it milliseconds, 1000..120000"
+
+# A count above the verb's ceiling is refused rather than rounded down. Rounding
+# was the reason `bookmarks --count 200` answered the same fifty every run with
+# nothing said: the caller cannot tell a short answer from a full one, which is
+# the one failure a number in the settings must not have.
+def Cfg.count_over(over: Bool, +v: D.Verb, +text: String) -> Maybe<&2, D.Error>:
+  match over:
+    case True{}:
+      Some{D.err_hint(
+        D.ErrUsage{},
+        D.Verb.name(v) ++ " takes --count 1.." ++ U32.show(Cfg.count_ceiling(v)) ++ ", not " ++ text,
+        "ask for a smaller number: the run reads that many and stops"
+      )}
+    case False{}:
+      None{}
+
+def Cfg.count_range_read(read: Maybe<&2, U32>, +v: D.Verb, +text: String) -> Maybe<&2, D.Error>:
+  match read:
+    case None{}:
+      # Not a number at all: the numeric rule owns that complaint, so this one
+      # stays quiet rather than reporting the same typo twice in different words.
+      None{}
+    case Some{n}:
+      Cfg.count_over(U32.is_gt(n, Cfg.count_ceiling(v)), v, text)
+
+def Cfg.count_range_error(+v: D.Verb, +text: String) -> Maybe<&2, D.Error>:
+  Cfg.count_range_read(U32.read(text), v, text)
 
 # `blank` is the text being empty, which means no source named the setting at
 # all: there is nothing to read, so the default stands and the typo rule does not

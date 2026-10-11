@@ -161,12 +161,14 @@ exit 0
 
 ok   21. a budget past the ceiling is clamped to it
 
-## 22. a search count is clamped to fifty
+## 22. a count past a verb's ceiling is refused, not rounded down
 $ bird search rust --count 999999 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
-exit 0
-{"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":50,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":50,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
+exit 2
+{"ok":false,"error":{"id":"usage","message":"search takes --count 1..50, not 999999","hint":"ask for a smaller number: the run reads that many and stops","retryable":false},"status":0,"body":"","notes":[]}
 
-ok   22. a search count is clamped to fifty
+stderr:
+
+ok   22. a count past a verb's ceiling is refused, not rounded down
 
 ## 23. a fixture is the body, not the path that named it
 $ bird read 12345 --fixture <work>/tweet.json --json
@@ -234,7 +236,7 @@ ok   31. a flag beats the config file
 ## 32. a count that is not a number is refused, not defaulted
 $ bird search rust --count abc --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"--count is not a number: abc","hint":"give it a whole number, 1..50","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"--count is not a number: abc","hint":"give it a whole number, 1 or more","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
@@ -252,7 +254,7 @@ ok   33. a timeout that is not a number is refused, not defaulted
 ## 34. a negative count is refused rather than clamped
 $ bird search rust --count -1 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --dry-run --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"--count is not a number: -1","hint":"give it a whole number, 1..50","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"--count is not a number: -1","hint":"give it a whole number, 1 or more","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
@@ -419,7 +421,7 @@ ok   54. ...with the count it was given
 ## 55. a bookmarks timeline folds to its tweets
 $ bird bookmarks --fixture <work>/bookmarks.json --json
 exit 0
-{"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
+{"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":["asked for 10 bookmarks, X had 1"]}
 
 ok   55. a bookmarks timeline folds to its tweets
 
@@ -487,7 +489,7 @@ ok   62. a config file refuses the text of a post
 ## 63. a config file cannot smuggle in a number that is not one
 $ BIRD_CONFIG=<work>/badnumber.json bird check --json
 exit 2
-{"ok":false,"error":{"id":"usage","message":"--count is not a number: abc","hint":"give it a whole number, 1..50","retryable":false},"status":0,"body":"","notes":[]}
+{"ok":false,"error":{"id":"usage","message":"--count is not a number: abc","hint":"give it a whole number, 1 or more","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
@@ -546,188 +548,195 @@ ok   69. a real 500 is upstream
 ## 70. bookmarks folds the timeline its operation names
 $ bird bookmarks --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-bookmarks /bookmarks --json
 exit 0
-{"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
+{"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":["asked for 10 bookmarks, X had 1"]}
 
 ok   70. bookmarks folds the timeline its operation names
 
-## 71. a failure with no request behind it reports no status
+## 71. a bookmark read follows the cursor to the next page
+$ bird bookmarks --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --count 3 --op-bookmarks /bookmarks-paged --json
+exit 0
+{"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6061","text":"the first saved","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null},{"id":"6062","text":"the second saved","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null},{"id":"6063","text":"the third saved","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
+
+ok   71. a bookmark read follows the cursor to the next page
+
+## 72. a failure with no request behind it reports no status
 $ bird tweet --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"tweet has nothing to send","hint":"give it its text, or --text-file PATH","retryable":false},"status":0,"body":"","notes":[]}
 
 stderr:
 
-ok   71. a failure with no request behind it reports no status
+ok   72. a failure with no request behind it reports no status
 
-## 72. a body far bigger than a tweet still parses and prints
+## 73. a body far bigger than a tweet still parses and prints
 $ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-tweet-detail /big --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[]},"notes":[]}
 
-ok   72. a body far bigger than a tweet still parses and prints
+ok   73. a body far bigger than a tweet still parses and prints
 
-## 73. the server received the variables, one request each
-requests: [('POST', '/viewer', '{}'), ('POST', '/viewer', '{}'), ('POST', '/detail', '{"focalTweetId":"12345"}'), ('POST', '/search', '{"rawQuery":"rust","count":10,"query_source":"typed_query","product":"Latest"}'), ('POST', '/tweet', '{"tweet_text":"hi","dark_request":false}'), ('POST', '/bookmarks', '{"count":10,"includePromotedContent":false,"latestControlAvailable":true,"requestContext":"launch"}'), ('POST', '/big', '{"focalTweetId":"12345"}')]
-ok   73. the server received the variables, one request each
+## 74. the server received the variables, one request each
+requests: [('POST', '/viewer', '{}'), ('POST', '/viewer', '{}'), ('POST', '/detail', '{"focalTweetId":"12345"}'), ('POST', '/search', '{"rawQuery":"rust","count":10,"query_source":"typed_query","product":"Latest"}'), ('POST', '/tweet', '{"tweet_text":"hi","dark_request":false}'), ('POST', '/bookmarks', '{"count":10,"includePromotedContent":false,"latestControlAvailable":true,"requestContext":"launch"}'), ('POST', '/bookmarks-paged', '{"count":3,"includePromotedContent":false,"latestControlAvailable":true,"requestContext":"launch"}'), ('POST', '/bookmarks-paged', '{"cursor":"LIVECURSOR1","count":3,"includePromotedContent":false,"latestControlAvailable":true,"requestContext":"launch"}'), ('POST', '/big', '{"focalTweetId":"12345"}')]
+ok   74. the server received the variables, one request each
 
-## 74. a 404 is not retryable
+## 75. a 404 is not retryable
 $ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-tweet-detail /detail --json
 exit 4
 {"ok":false,"error":{"id":"not_found","message":"{\"errors\":[{\"message\":\"No tweet found\"}]}","hint":"the tweet may be deleted, or the id may be wrong","retryable":false},"status":404,"body":"{\"errors\":[{\"message\":\"No tweet found\"}]}","notes":[]}
 
 stderr:
 
-ok   74. a 404 is not retryable
+ok   75. a 404 is not retryable
 
-## 75. a 429 is retryable, and the envelope says so
+## 76. a 429 is retryable, and the envelope says so
 $ bird search rust --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-search /search --json
 exit 5
 {"ok":false,"error":{"id":"rate_limited","message":"Rate limit exceeded","hint":"X is rate limiting this account: back off before retrying","retryable":true},"status":429,"body":"Rate limit exceeded","notes":[]}
 
 stderr:
 
-ok   75. a 429 is retryable, and the envelope says so
+ok   76. a 429 is retryable, and the envelope says so
 
-## 76. a media write uploads, sets the alt, then posts
+## 77. a media write uploads, sets the alt, then posts
 $ bird tweet --text media live --media <work>/shot.png --alt a description --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --op-create-tweet create-tweet --json
 exit 0
 {"ok":true,"verb":"tweet","status":200,"data":{"data":{"create_tweet":{"tweet_results":{"result":{"rest_id":"5150","legacy":{"full_text":"media live"}}}}}},"notes":[]}
 
-ok   76. a media write uploads, sets the alt, then posts
+ok   77. a media write uploads, sets the alt, then posts
 
-## 77. mentions reads the timeline its setting names
+## 78. mentions reads the timeline its setting names
 $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   77. mentions reads the timeline its setting names
+ok   78. mentions reads the timeline its setting names
 
-## 78. the server received the upload, the alt and the post, in that order
+## 79. the server received the upload, the alt and the post, in that order
 media: [('POST', '/media/upload.json', 'multipart/form-data;', 205), ('POST', '/media/metadata/create.json', 'application/json', 54)]
 create: [('POST', '/graphql/create-tweet/CreateTweet', 194)]
 mentions: [('GET', '/mentions.json?count=10', 0)]
-ok   78. the server received the upload, the alt and the post, in that order
+ok   79. the server received the upload, the alt and the post, in that order
 
-## 79. an article answers with the article, not its t.co stub
+## 80. an article answers with the article, not its t.co stub
 $ bird read 12345 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --op-tweet-detail detail --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"# the head\n\nthe body","lang":"zxx","created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":"a live article"}]},"notes":[]}
 
-ok   79. an article answers with the article, not its t.co stub
+ok   80. an article answers with the article, not its t.co stub
 
-## 80. a read asked for the article body on the wire
+## 81. a read asked for the article body on the wire
 article: [('POST', '/graphql/detail/TweetDetail', '{"variables":{"focalTweetId":"12345","includePromotedContent":false,"withBirdwatchNotes":false,"withVoice":false},"queryId":"detail","features":{"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"articles_preview_enabled":true},"fieldToggles":{"withArticleRichContentState":true,"withArticlePlainText":true}}')]
-ok   80. a read asked for the article body on the wire
+ok   81. a read asked for the article body on the wire
 
-## 81. an attachment that is not there is a usage error
+## 82. an attachment that is not there is a usage error
 $ bird tweet --text hi --media <work>/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},"status":0,"body":"","notes":["curl: (26) Failed to open/read local data from file/application\n"]}
 
 stderr:
 
-ok   81. an attachment that is not there is a usage error
+ok   82. an attachment that is not there is a usage error
 
-## 82. ...and it is not retryable
+## 83. ...and it is not retryable
 $ bird tweet --text hi --media <work>/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},"status":0,"body":"","notes":["curl: (26) Failed to open/read local data from file/application\n"]}
 
 stderr:
 
-ok   82. ...and it is not retryable
+ok   83. ...and it is not retryable
 
-## 83. the cookie names a shell already exports are read
+## 84. the cookie names a shell already exports are read
 $ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   83. the cookie names a shell already exports are read
+ok   84. the cookie names a shell already exports are read
 
-## 84. ...and BIRD_ wins when both spellings are set
+## 85. ...and BIRD_ wins when both spellings are set
 $ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 BIRD_AUTH_TOKEN=BIRD-AT BIRD_CT0=BIRD-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   84. ...and BIRD_ wins when both spellings are set
+ok   85. ...and BIRD_ wins when both spellings are set
 
-## 85. the server received the credential each case asked for
+## 86. the server received the credential each case asked for
 alias only: auth_token=ALIAS-AT; ct0=ALIAS-CT0 | ALIAS-CT0
 both set:   auth_token=BIRD-AT; ct0=BIRD-CT0 | BIRD-CT0
-ok   85. the server received the credential each case asked for
+ok   86. the server received the credential each case asked for
 
-## 86. a mentions answer carries the author from the map beside it
+## 87. a mentions answer carries the author from the map beside it
 $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   86. a mentions answer carries the author from the map beside it
+ok   87. a mentions answer carries the author from the map beside it
 
-## 87. login imports the session and reads the bundle for its constants
+## 88. login imports the session and reads the bundle for its constants
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   87. login imports the session and reads the bundle for its constants
+ok   88. login imports the session and reads the bundle for its constants
 
-## 88. ...and reports the verb it ran
+## 89. ...and reports the verb it ran
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   88. ...and reports the verb it ran
+ok   89. ...and reports the verb it ran
 
-## 89. ...and writes the bookmarks operation the bundle carried
+## 90. ...and writes the bookmarks operation the bundle carried
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   89. ...and writes the bookmarks operation the bundle carried
+ok   90. ...and writes the bookmarks operation the bundle carried
 
-## 90. login does not print the cookies it imported
+## 91. login does not print the cookies it imported
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   90. login does not print the cookies it imported
+ok   91. login does not print the cookies it imported
 
-## 91. login writes the default settings path, making its directory
+## 92. login writes the default settings path, making its directory
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/home/.config/bird/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   91. login writes the default settings path, making its directory
+ok   92. login writes the default settings path, making its directory
 
-## 92. a run with no credentials reads the cache login wrote
+## 93. a run with no credentials reads the cache login wrote
 $ bird mentions --settings-path <work>/settings.json --mentions-url http://127.0.0.1:<port>/mentions.json --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   92. a run with no credentials reads the cache login wrote
+ok   93. a run with no credentials reads the cache login wrote
 
-## 93. the server received the session the cache held
+## 94. the server received the session the cache held
 page:     5 requests, GET /home auth_token=SESSION-TOKEN; ct0=CSRF-TOKEN-01
 bundle:   5 requests, GET /client-web/main.livetest.js None
 mentions: GET /mentions.json?count=10 auth_token=SESSION-TOKEN; ct0=CSRF-TOKEN-01 Bearer AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL
-ok   93. the server received the session the cache held
+ok   94. the server received the session the cache held
 
-## 94. on a terminal a read is the tweet, not the envelope
+## 95. on a terminal a read is the tweet, not the envelope
 $ TERM=xterm bird read 12345 --fixture <fixture>
 exit 0
 ^Da fixture tweet
 id 12345
 
-ok   94. on a terminal a read is the tweet, not the envelope
+ok   95. on a terminal a read is the tweet, not the envelope
 
-## 95. a terminal says so when the answer holds no tweet
+## 96. a terminal says so when the answer holds no tweet
 $ TERM=xterm bird read 999 --fixture <fixture>
 exit 0
 ^Dno tweets
 
-ok   95. a terminal says so when the answer holds no tweet
+ok   96. a terminal says so when the answer holds no tweet
 
-## 96. every flag the guides name is one the parser accepts
+## 97. every flag the guides name is one the parser accepts
 flags named in the guides: 33
-ok   96. every flag the guides name is one the parser accepts
+ok   97. every flag the guides name is one the parser accepts
 
-# 96 cases: 96 ok, 0 failed, 0 skipped
+# 97 cases: 97 ok, 0 failed, 0 skipped

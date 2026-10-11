@@ -63,11 +63,20 @@ spend a round trip to learn what is knowable locally.
 
 ## Count
 
-`--count` applies to `search`, `mentions` and `bookmarks` and is clamped to **1..50** (the
-default is 10). `--count 0` becomes 1, `--count 999` becomes 50. It is read from
-the item list rather than the verb, so it counts whether it was written before or
-after the verb it belongs to — and a value the program cannot read is refused
-rather than quietly replaced by the default.
+`--count` applies to `search`, `mentions` and `bookmarks`, and its ceiling depends
+on the verb because what the number means differs (the default is 10):
+
+| verb | `--count` means | ceiling |
+| --- | --- | --- |
+| `search`, `mentions` | one timeline page | 50 |
+| `bookmarks` | the total to read, across pages | 500 |
+
+A value outside the range is **refused** (exit `2`) rather than rounded down, and
+that refusal is the point: a run that answers with fewer results than were asked
+for looks finished and is not. `--count 0` is refused for the same reason. It is
+read from the item list rather than the verb, so it counts whether it was written
+before or after the verb it belongs to, and a value the program cannot read is
+refused by name rather than quietly replaced by the default.
 
 ## What a read answers with
 
@@ -119,6 +128,22 @@ that starts answering `Query not found` wants a fresh id:
 bird bookmarks --count 20 --json
 bird bookmarks --op-bookmarks "$FRESH_ID" --json
 ```
+
+It is also the one read X answers a page at a time: a page carries as many tweets
+as it was asked for (X caps one near a hundred) plus a cursor for the next, and the
+run follows that cursor until `--count` is met, X offers no further page, or a page
+carries nothing at all. So `--count 200` is 200 bookmarks across a few requests,
+not the first page once — which is what it used to be, silently, because the cursor
+was never read and the answers were not joined. Every page is folded once and
+joined in X's order, the result is cut to exactly `--count`, and a run that ends
+short says so in `notes`:
+
+```sh
+bird bookmarks --count 200 --json   # notes: "asked for 200 bookmarks, X had 137"
+```
+
+`--raw` is the exception: it answers with one page as X sent it, because "the
+response as X sent it" is a page.
 
 ## A terminal gets the tweets
 

@@ -81,7 +81,10 @@ prints a plan instead (see [Media](./media.mdx)).
   `.data.tweets[]`, each with `id`, `text`, `lang`, `created_at`, `author`,
   `metrics`, `media`, `urls`, `quoted` and `in_reply_to`. `--raw` answers with the
   body X sent instead. See [Reading](./reading.mdx).
-- `search` and `mentions` count: `--count` is clamped to 1..50, default 10.
+- `--count` is 1..50 for `search` and `mentions` (one page each) and 1..500 for
+  `bookmarks`, whose count is a total read across pages; default 10. A value
+  outside its verb's range is refused with exit 2, never rounded down, so a short
+  answer is always visible in `notes`.
 - A tweet id or url is accepted anywhere a target is wanted; the request carries
   the extracted id, never the whole url.
 - A body that is not JSON is kept in `body`, with a note saying why `data` is

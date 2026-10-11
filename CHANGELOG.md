@@ -10,6 +10,20 @@ log starts at `0.3.0`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`bookmarks` reads the whole timeline, not its first page.** X answers a
+  bookmark timeline one page at a time with a cursor for the next, and the cursor
+  was never read: `bookmarks --count 200` answered the same first page every run
+  with nothing in the answer to say so, which is invisible truncation for anything
+  consuming the stream. The run now follows the cursor until `--count` is met, X
+  offers no further page, or a page carries nothing, joins the pages in X's order,
+  cuts the result to exactly `--count`, and says `asked for 200 bookmarks, X had
+  137` in `notes` when it ends short. `--raw` still answers one page, because that
+  is what the flag means. `--count` also stopped being silently rounded down: a
+  value outside its verb's range is refused with exit `2` (1..50 for `search` and
+  `mentions`, 1..500 for `bookmarks`, whose count is now a total across pages).
+
 ### Added
 
 - **A read answers with the tweet, not with the envelope it arrived in.** X wraps

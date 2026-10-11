@@ -281,7 +281,11 @@ case_ok "a text full of shell metacharacters stays one argument" 0 'a; rm -rf /'
 case_ok "a tweet id is read out of a url" 0 '99887766' -- read https://x.com/someone/status/99887766 $CREDS --dry-run --json
 case_ok "a sub-second budget floors at one second, not zero" 0 '"timeout_ms":1000' -- check --timeout-ms 0 --json
 case_ok "a budget past the ceiling is clamped to it" 0 '"timeout_ms":120000' -- check --timeout-ms 999999 --json
-case_ok "a search count is clamped to fifty" 0 '\"count\":50' -- search rust --count 999999 $CREDS --dry-run --json
+# A timeout past its ceiling is clamped because a run that waits longer than it may
+# is still the run that was asked for. A count past its ceiling is refused, because a
+# run that answers with fewer results than were asked for looks finished and is not:
+# that silence is what made `bookmarks --count 200` return the same fifty every time.
+case_ok "a count past a verb's ceiling is refused, not rounded down" 2 'search takes --count 1..50' -- search rust --count 999999 $CREDS --dry-run --json
 
 # ── a fixture answers through the same fold as a live response ──────────────
 case_ok "a fixture is the body, not the path that named it" 0 'a fixture tweet' -- read 12345 --fixture "$WORK/tweet.json" --json
@@ -401,6 +405,10 @@ else
     case_ok "a real 429 keeps the exact body, nothing glued to it" 5 '"body":"Rate limit exceeded"' -- search rust $LIVE --op-search /search --json
     case_ok "a real 500 is upstream" 7 '"id":"upstream"' -- tweet hi $LIVE --op-create-tweet /tweet --json
     case_ok "bookmarks folds the timeline its operation names" 0 'a saved tweet' -- bookmarks $LIVE --op-bookmarks /bookmarks --json
+    # One page is not the whole timeline: X caps a page and offers a cursor, and the
+    # run follows it. A body with only page one in it would pass a reader that never
+    # asked for page two, so the third saved tweet is the assertion that matters.
+    case_ok "a bookmark read follows the cursor to the next page" 0 '"id":"6063"' -- bookmarks $LIVE --count 3 --op-bookmarks /bookmarks-paged --json
     case_ok "a failure with no request behind it reports no status" 2 '"status":0' -- tweet --json
     # 300 KB in, one envelope out. The status is split off the end of whatever curl
     # wrote, and the obvious way to do that costs a stack frame per character, which
@@ -417,6 +425,7 @@ rows = [json.loads(line) for line in open(sys.argv[1])]
 detail = [r for r in rows if r["path"] == "/detail"]
 search = [r for r in rows if r["path"] == "/search"]
 bookmarks = [r for r in rows if r["path"] == "/bookmarks"]
+paged = [r for r in rows if r["path"] == "/bookmarks-paged"]
 ok = (len(detail) == 1
       and detail[0]["method"] == "POST"
       and detail[0]["body"] == '{"focalTweetId":"12345"}'
@@ -425,7 +434,13 @@ ok = (len(detail) == 1
       and len(bookmarks) == 1
       and bookmarks[0]["method"] == "POST"
       and '"count":10' in bookmarks[0]["body"]
-      and '"requestContext":"launch"' in bookmarks[0]["body"])
+      and '"requestContext":"launch"' in bookmarks[0]["body"]
+      # The second page is asked for with the token the first page ended with, and
+      # exactly once: a cursor that is dropped means one page, and one that is sent
+      # twice means a walk that does not advance.
+      and len(paged) == 2
+      and '"cursor"' not in paged[0]["body"]
+      and '"cursor":"LIVECURSOR1"' in paged[1]["body"])
 print("requests:", [(r["method"], r["path"], r["body"]) for r in rows])
 sys.exit(0 if ok else 1)
 PY
