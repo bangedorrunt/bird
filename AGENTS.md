@@ -24,11 +24,10 @@ not accept it, and the guides must keep that check green.
 PATH="$HOME/.bend/bin:$PATH"              # harness shells are not login shells; `~/.zprofile` covers a person
 bend src/effects.bend --check-only        # the program and its imports type-check
 bend PROOF.bend                           # laws gate the build
-bend tests/argv_test.bend                 # offline suites: argv, api, http, json, update
+bend tests/argv_test.bend                 # offline suites: argv, api, http, json, scan, bundle, update
 bash tests/e2e.sh                         # the seam: real socket, stand-in server, exit codes
 bend src/effects.bend -- check --json     # run it; everything after `--` is argv
-bend src/effects.bend -o bird             # or compile the CLI (needs clang)
-install -m 0755 bird ~/.local/bin/bird    # `bird` on PATH; the binary needs only curl
+./install.sh                             # compile the CLI (needs clang) and install it on PATH
 bird read 12345 --json                    # then call the CLI itself
 ```
 

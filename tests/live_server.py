@@ -30,9 +30,17 @@ and `--mentions-url`:
     POST /media/metadata/create.json 200 an empty acceptance of an alt text
     POST /graphql/create-tweet/CreateTweet 200  a created tweet
     GET  /mentions.json             200  a mentions timeline
+    GET  /home                       200  the web client's own page, naming its bundle
+    GET  /client-web/main.<hash>.js  200  a bundle carrying a bearer and four ops
 
 A GET is logged too, with an empty body: `mentions` is the one read that is not a
 POST, and "no request body" is exactly what makes it different.
+
+The last two routes serve `bird login`: the page names the bundle, and the bundle
+carries the bearer and the operation ids. Both are read out of what X serves in the
+same shapes, so the flow runs over a real socket instead of against a recorded
+document. The page is built per request because it has to name the port this
+server actually bound, which is only known once it has one.
 """
 
 import json
@@ -83,6 +91,24 @@ BODIES = {
 }
 
 
+BUNDLE_PATH = "/client-web/main.livetest.js"
+
+# The 20 leading `A`s are not decoration: the real bearer begins with them, and
+# the reader searches for that head before the token, so a fixture without it
+# would pass here and fail against X.
+BUNDLE_JS = ("e.exports={queryId:\"LIVEVIEWERID1\",operationName:\"Viewer\",operationType:\"query\"}"
+             ",{queryId:\"LIVEDETAILID2\",operationName:\"TweetDetail\",operationType:\"query\"}"
+             ",{queryId:\"LIVESEARCHID3\",operationName:\"SearchTimeline\",operationType:\"query\"}"
+             ",{queryId:\"LIVECREATEID4\",operationName:\"CreateTweet\",operationType:\"mutation\"}"
+             ",Bearer AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL\",")
+
+
+def home_page(port: int) -> str:
+    return ("<!doctype html><html><head>"
+            f'<script defer src="http://127.0.0.1:{port}{BUNDLE_PATH}" nonce="x"></script>'
+            "</head><body>a signed-in page</body></html>")
+
+
 def route_of(path: str) -> str:
     """The routes above are paths; a query string is a variable, not a route."""
     return path.split("?", 1)[0]
@@ -101,9 +127,15 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         self.record("", 0)
-        status, ctype, text = BODIES.get(route_of(self.path), (404, "application/json",
-                                                              '{"errors":[{"message":"no such route"}]}'))
-        self.answer(status, ctype, text)
+        route = route_of(self.path)
+        if route == "/home":
+            self.answer(200, "text/html", home_page(self.server.server_address[1]))
+        elif route == BUNDLE_PATH:
+            self.answer(200, "application/javascript", BUNDLE_JS)
+        else:
+            status, ctype, text = BODIES.get(route, (404, "application/json",
+                                                     '{"errors":[{"message":"no such route"}]}'))
+            self.answer(status, ctype, text)
 
     def record(self, body: str, length: int):
         with open(LOG, "a") as f:

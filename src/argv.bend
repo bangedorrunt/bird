@@ -189,6 +189,18 @@ def Argv.kind_of(name: String) -> FlagKind:
       FkValue{}
     case "--mentions-url":
       FkValue{}
+    case "--cookie-source":
+      FkValue{}
+    case "--cookie-db":
+      FkValue{}
+    case "--chrome-key":
+      FkValue{}
+    case "--web-home":
+      FkValue{}
+    case "--bundle-base":
+      FkValue{}
+    case "--settings-path":
+      FkValue{}
     case _:
       FkUnknown{}
 
@@ -217,7 +229,19 @@ def Argv.flag_names() -> List<&2, String>:
                                         "--gql-features" <> (
                                           "--media-upload-base" <> (
                                           "--gql-base" <> (
-                                            "--mentions-url" <> Nil{}
+                                            "--mentions-url" <> (
+                                              "--bundle-base" <> (
+                                              "--cookie-source" <> (
+                                                "--cookie-db" <> (
+                                                  "--chrome-key" <> (
+                                                    "--web-home" <> (
+                                                      "--settings-path" <> Nil{}
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                            )
                                           )
                                         )
                                         )
@@ -260,6 +284,8 @@ def Argv.verb_of(word: String) -> Maybe<&2, D.Verb>:
       Some{D.VerbWhoami{}}
     case "check":
       Some{D.VerbCheck{}}
+    case "login":
+      Some{D.VerbLogin{}}
     case "help":
       Some{D.VerbHelp{}}
     case "schema":
@@ -307,7 +333,7 @@ def Argv.verbs() -> List<&2, String>:
           "thread" <> (
             "search" <> (
               "mentions" <> (
-                "whoami" <> ("check" <> ("help" <> ("schema" <> ("version" <> Nil{})))))))))))
+                "whoami" <> ("check" <> ("login" <> ("help" <> ("schema" <> ("version" <> Nil{}))))))))))))
 
 # Whether the verb takes one positional argument: the target of a read, the
 # query of a search. Everything after it, and every positional for a verb
@@ -570,6 +596,7 @@ def Argv.help_text() -> String:
   ++ "  mentions [--count <n>]                                 mentions of you\n"
   ++ "  whoami                                                 the signed-in account\n"
   ++ "  check                                                  whether credentials work\n"
+  ++ "  login [--cookie-source chrome|firefox]                 import a session and the rotating settings\n"
   ++ "  help                                                   this text\n"
   ++ "  schema                                                 this, as json\n"
   ++ "  version                                                the build\n\n"
@@ -583,6 +610,12 @@ def Argv.help_text() -> String:
   ++ "  --media-upload-base <url>           where X's media service lives\n"
   ++ "  --gql-base <url>                    where X's graphql endpoint lives\n"
   ++ "  --mentions-url <url>                X's mentions timeline endpoint\n"
+  ++ "  --cookie-source chrome|firefox      login: which browser to read the session from\n"
+  ++ "  --cookie-db <path>                  login: that browser's cookie database\n"
+  ++ "  --chrome-key <password>             login: Chrome's keychain password, instead of the keychain\n"
+  ++ "  --web-home <url>                    login: the page whose bundle names the bearer and ids\n"
+  ++ "  --bundle-base <url>                 login: where the client bundle is served from\n"
+  ++ "  --settings-path <path>              where the settings cache lives\n"
   ++ "  --json                              one json envelope on stdout\n"
   ++ "  --dry-run                           describe the request, send nothing\n"
   ++ "  --timeout-ms <n>                    per-request timeout, 1000..120000\n\n"

@@ -101,6 +101,8 @@ def Laws.verb_word_reaches_verb(v):
       {==}
     case D.VerbCheck{}:
       {==}
+    case D.VerbLogin{}:
+      {==}
 
 # ── the_timeout_floor_is_one_second ────────────────────────────────────────
 # The floor branch ignores its budget entirely, so the goal computes to `True`
@@ -120,6 +122,10 @@ def Laws.alt_flag_is_an_alt_item(value):
   {==}
 
 # ── writes_are_network ──────────────────────────────────────────────────────
+# `login` is the one verb that writes locally -- it writes the settings cache --
+# and it still needs the network, because the bundle it writes into that cache is
+# fetched from X. It answers `False` to `writes` and `True` to `needs_network`, so
+# the disjunction is true before the second side is read.
 
 def Laws.writes_are_network(v):
   match v:
@@ -146,4 +152,6 @@ def Laws.writes_are_network(v):
     case D.VerbWhoami{}:
       {==}
     case D.VerbCheck{}:
+      {==}
+    case D.VerbLogin{}:
       {==}

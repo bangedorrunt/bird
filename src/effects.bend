@@ -1,4 +1,5 @@
 import Base
+import ./scan.bend as S
 import ./domain.bend as D
 import ./http.bend as H
 import ./update.bend as U
@@ -54,6 +55,13 @@ def Effects.grace_ms(ms: U32) -> U32:
 # rather than a hang worth waiting for.
 def Effects.fuel() -> Nat:
   4096n
+
+# A local program's budget. `sqlite3`, `security` and `openssl` all answer in
+# milliseconds, but `security` can put up a keychain dialog the first time and wait
+# for a person, so the ceiling is generous rather than tight: a login that waits a
+# minute for a click is a login that worked.
+def Effects.local_ms() -> U32:
+  120000
 
 # ── reading a file ──────────────────────────────────────────────────────
 
@@ -151,6 +159,86 @@ def Effects.request(id: U32, +req: D.HttpReq) -> IO(D.Msg):
         outcome => Effects.http_outcome(id, outcome)
       )
 
+# ── running one local program ───────────────────────────────────────────
+#
+# The same `Process.run` the transport uses, with the program named by the fold
+# instead of being curl. No shell is involved, so an argument is an argument: a
+# password or a path cannot become syntax. Everything comes back as text, which is
+# why the Chrome ciphertext never travels this way -- it is written to a file by
+# `sqlite3` and read by `openssl`.
+
+def Effects.proc_value(id: U32, value: U32 & (String & String)) -> IO(D.Msg):
+  (status, streams) = value
+  (out, err) = streams
+  IO.pure(D.Msg, D.MsgProc{id, status, out, err})
+
+def Effects.proc_outcome(id: U32, outcome: Result<&1, &1, U32 & String, U32 & (String & String)>) -> IO(D.Msg):
+  match outcome:
+    case Fail{(code, message)}:
+      IO.pure(D.Msg, D.MsgProc{id, code, SNil{}, message})
+    case Done{value}:
+      Effects.proc_value(id, value)
+
+def Effects.exec(id: U32, program: String, +args: List<&2, String>) -> IO(D.Msg):
+  IO.bind(
+    Result<&1, &1, U32 & String, U32 & (String & String)>,
+    D.Msg,
+    Process.run(program, Effects.owned(args, Nil{}), SNil{}, Effects.max_reply(), Effects.local_ms()),
+    outcome => Effects.proc_outcome(id, outcome)
+  )
+
+# ── writing one file ────────────────────────────────────────────────────
+#
+# The settings cache, and the only file this program writes. `File.write` hands
+# the handle back, so the close happens before the outcome is read.
+
+def Effects.wrote(id: U32, +path: String, outcome: Result<&1, &1, U32 & String, Unit>) -> IO(D.Msg):
+  match outcome:
+    case Fail{(code, message)}:
+      IO.pure(D.Msg, D.MsgWrote{id, path, False{}, message})
+    case Done{value}:
+      IO.pure(D.Msg, D.MsgWrote{id, path, True{}, SNil{}})
+
+def Effects.write_close(id: U32, +path: String, pair: File & Result<&1, &1, U32 & String, Unit>) -> IO(D.Msg):
+  (handle, outcome) = pair
+  IO.bind(Unit, D.Msg, File.close(handle), u => Effects.wrote(id, path, outcome))
+
+def Effects.write_open(id: U32, +path: String, +text: String, opened: Result<&1, &1, U32 & String, File>) -> IO(D.Msg):
+  match opened:
+    case Fail{(code, message)}:
+      IO.pure(D.Msg, D.MsgWrote{id, path, False{}, message})
+    case Done{handle}:
+      IO.bind(File & Result<&1, &1, U32 & String, Unit>, D.Msg, File.write(handle, text), Effects.write_close(id, path))
+
+def Effects.now(id: U32, +path: String, +text: String) -> IO(D.Msg):
+  IO.bind(Result<&1, &1, U32 & String, File>, D.Msg, File.open(path, "w"), Effects.write_open(id, path, text))
+
+def Effects.dir_args(+dir: String) -> List<&2, String>:
+  "-p" <> (dir <> Nil{})
+
+# The directory is made first, because the settings cache's default path is
+# `$HOME/.config/bird/settings.json` and `File.open` on it fails on a machine where
+# that directory has never been made -- with the OS naming the file rather than the
+# missing directory. `mkdir -p` runs the way the login flow runs `sqlite3` and
+# `openssl`: a program and an argv, no shell, `-p` so one that is already there is
+# not an error. Its outcome is dropped on purpose, so a `mkdir` that cannot run
+# leaves the write to report its own message, which is the one naming the file. A
+# path with no `/` in it is written where it says, with no call at all.
+def Effects.write_here(no_dir: Bool, id: U32, +path: String, +text: String) -> IO(D.Msg):
+  match no_dir:
+    case True{}:
+      Effects.now(id, path, text)
+    case False{}:
+      IO.bind(
+        Result<&1, &1, U32 & String, U32 & (String & String)>,
+        D.Msg,
+        Process.run("mkdir", Effects.owned(Effects.dir_args(S.Scan.dir_of(path, SNil{})), Nil{}), SNil{}, Effects.max_file(), Effects.local_ms()),
+        made => Effects.now(id, path, text)
+      )
+
+def Effects.write_file(id: U32, +path: String, +text: String) -> IO(D.Msg):
+  Effects.write_here(String.is_empty(S.Scan.dir_of(path, SNil{})), id, path, text)
+
 def Effects.http_message(+cmd: D.Cmd) -> IO(D.Msg):
   match cmd:
     case D.CmdHttp{id, req}:
@@ -164,6 +252,10 @@ def Effects.message(+cmd: D.Cmd) -> IO(D.Msg):
       Effects.read_message(cmd)
     case D.CmdHttp{id, req}:
       Effects.http_message(cmd)
+    case D.CmdExec{id, program, args}:
+      Effects.exec(id, program, args)
+    case D.CmdWriteFile{id, path, text}:
+      Effects.write_file(id, path, text)
     case _:
       IO.die(D.Msg, 1, "bird: internal: a command with no way to answer")
 
@@ -312,8 +404,14 @@ def Effects.specs() -> List<&2, EnvSpec>:
                                     EnvSpec{"BIRD_OP_VIEWER", "--op-viewer"} <> (
                                       EnvSpec{"BIRD_MEDIA_UPLOAD_BASE", "--media-upload-base"} <> (
                                         EnvSpec{"BIRD_GQL_BASE", "--gql-base"} <> (
-                                          EnvSpec{"BIRD_MENTIONS_URL", "--mentions-url"} <> Nil{}
-                                        )
+                                          EnvSpec{"BIRD_MENTIONS_URL", "--mentions-url"} <> (
+                                            EnvSpec{"BIRD_BUNDLE_BASE", "--bundle-base"} <> (
+                                              EnvSpec{"HOME", "--home"} <> (
+                                                EnvSpec{"TMPDIR", "--tmpdir"} <> Nil{}
+                                              )
+                                            )
+                                          )
+                                          )
                                       )
                                     )
                                   )

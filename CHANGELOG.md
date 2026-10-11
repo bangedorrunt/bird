@@ -12,6 +12,26 @@ log starts at `0.3.0`.
 
 ### Added
 
+- `install.sh`: compiles the CLI and installs it, with `PREFIX=` to choose where
+  (default `~/.local/bin`) and a `bird version` check of what was installed. The
+  build happens in a temporary directory and is moved into place, so a failed build
+  leaves the copy already on PATH alone and leaves nothing in the repo.
+- **`login`**: reads the session out of Chrome or Firefox and the rotating
+  settings — the web bearer and the four operation ids — out of X's own client
+  bundle, and writes both to a settings cache every later run reads with no
+  credential flags. Chrome's cookies are decrypted with the key from the login
+  keychain (`--chrome-key` supplies it directly, which is what makes the recipe
+  testable and what a machine with an unusual keychain needs); Firefox's are read
+  with one `sqlite3` query. A wrongly-decrypted value is a refusal naming
+  `--chrome-key`, never a cache written with it. See `docs/guides/login.mdx`.
+- `--settings-path`: where that cache lives, default
+  `$HOME/.config/bird/settings.json`. It is read by every verb in the same first
+  round as the config file, and loses to it, so a stale cache never overrides a
+  setting someone wrote down. `login` itself does not read it.
+- `--cookie-source`, `--cookie-db`, `--chrome-key`, `--web-home` and
+  `--bundle-base`: the login flow's settings. The last two are settings rather
+  than constants so the flow can be exercised against a stand-in, which is how
+  `tests/e2e.sh` checks it over a real socket.
 - The two session cookies are also read from `TWITTER_AUTH_TOKEN` and
   `TWITTER_CT0`, the names a shell that already talks to X exports. Both spellings
   work and neither is deprecated; when both are set, `BIRD_AUTH_TOKEN`/`BIRD_CT0`
@@ -19,12 +39,24 @@ log starts at `0.3.0`.
 
 ### Fixed
 
+- `bird login` with no `--settings-path` failed on a fresh machine: the default is
+  `$HOME/.config/bird/settings.json`, and opening it where that directory has never
+  been made reports the OS's own "no such file or directory", which names the file
+  rather than the missing directory. The directory is now made first, the same way
+  the flow runs every other program, so the default path works on a first run.
+  Found by running the installed binary by hand; the suite had pre-created that
+  directory for reasons of its own and could not see it.
 - `tests/e2e.sh` now clears every environment name the program reads before the
   first case. A shell that exports a real session would otherwise let the
   "no credentials" case find it and reach X.
 - The e2e transcript folds the run's temp directory and the stand-in's port to
   `<work>` and `<port>` as it is written. Both are different every run, and the
   committed artifact differed from itself for no reason a reader could act on.
+- The login wire case asserted a fixed number of requests to the page and to the
+  bundle, so adding a login case failed it for no reason and removing one would
+  have kept it green through a real regression. It now reads **every** row and
+  asserts the two facts that matter: the session reached the page each time, and
+  never reached the bundle.
 
 ## [0.3.0] - 2026-10-11
 

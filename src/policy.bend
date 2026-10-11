@@ -688,6 +688,192 @@ def Cfg.default_gql_base() -> String:
 def Cfg.default_mentions_url() -> String:
   "https://x.com/i/api/2/notifications/mentions.json"
 
+# ── the settings `login` reads ──────────────────────────────────────────
+#
+# `login` is the one verb that reads the world for its own settings rather than
+# being handed them, so the handful it needs are gathered here through the same
+# flag > environment > config > default chain as everything else. Two of them are
+# not settings a person writes: `--home` and `--tmpdir` are the interpreter's own
+# environment passed through as items, which is how a default path can depend on
+# where the operator's home is without the pure fold ever reading the world.
+def Cfg.default_web_home() -> String:
+  "https://x.com/home"
+
+def Cfg.default_settings_name() -> String:
+  "/.config/bird/settings.json"
+
+def Cfg.default_settings_path(home: String) -> String:
+  match home:
+    case "":
+      SNil{}
+    case _:
+      home ++ Cfg.default_settings_name()
+
+def Cfg.chrome_profile_db() -> String:
+  "/Library/Application Support/Google/Chrome/Default/Cookies"
+
+# Only Chrome has a path this program can guess. Firefox keeps a profile per
+# installation with a name that is not knowable from here, so a firefox run says
+# which database to read instead of picking one and reading the wrong session.
+def Cfg.default_cookie_db(source: String, home: String) -> String:
+  match source:
+    case "chrome":
+      home ++ Cfg.chrome_profile_db()
+    case _:
+      SNil{}
+
+def Cfg.tmp_dir_or(dir: String) -> String:
+  match dir:
+    case "":
+      "/tmp"
+    case _:
+      dir
+
+# Where the client bundle is served from, and the base of the operation ids the
+# browser reads. A setting rather than a constant, so a run can be pointed at a
+# stand-in -- which is what lets the login flow be checked end to end over a socket
+# instead of only against a recorded document.
+def Cfg.default_bundle_base() -> String:
+  "https://abs.twimg.com/responsive-web/client-web/"
+
+def Cfg.bundle_base_on(+items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&2, D.Item>) -> String:
+  Cfg.order(items, env, rc, "--bundle-base", Cfg.default_bundle_base())
+
+# The guessed database depends on which source won, so it is worked out from the
+# winning source rather than from the flag that happened to name it.
+def Cfg.order_cookie_db(+items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&2, D.Item>) -> String:
+  Cfg.default_cookie_db(
+    Cfg.order(items, env, rc, "--cookie-source", SNil{}),
+    Cfg.order(items, env, rc, "--home", SNil{})
+  )
+
+def Cfg.login_cfg_on(+items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&2, D.Item>) -> D.LoginCfg:
+  D.mk_login_cfg(
+    Cfg.order(items, env, rc, "--cookie-source", SNil{}),
+    Cfg.order(items, env, rc, "--cookie-db", Cfg.order_cookie_db(items, env, rc)),
+    Cfg.order(items, env, rc, "--chrome-key", SNil{}),
+    Cfg.order(items, env, rc, "--web-home", Cfg.default_web_home()),
+    Cfg.bundle_base_on(items, env, rc),
+    Cfg.order(items, env, rc, "--settings-path", Cfg.default_settings_path(Cfg.order(items, env, rc, "--home", SNil{}))),
+    Cfg.tmp_dir_or(Cfg.order(items, env, rc, "--tmpdir", SNil{}))
+  )
+
+# ── what `login` refuses before it runs anything ────────────────────────
+
+def Cfg.login_source_known(+s: String) -> Bool:
+  match s:
+    case "chrome":
+      True{}
+    case "firefox":
+      True{}
+    case _:
+      False{}
+
+def Cfg.source_verdict(known: Bool, +s: String) -> Maybe<&2, D.Error>:
+  match known:
+    case True{}:
+      None{}
+    case False{}:
+      Some{D.err_hint(
+        D.ErrUsage{},
+        "--cookie-source is not a browser this build reads: " ++ s,
+        "chrome or firefox"
+      )}
+
+def Cfg.source_gate(blank: Bool, known: Bool, +s: String) -> Maybe<&2, D.Error>:
+  match blank:
+    case True{}:
+      None{}
+    case False{}:
+      Cfg.source_verdict(known, s)
+
+def Cfg.cookie_source_error(+s: String) -> Maybe<&2, D.Error>:
+  Cfg.source_gate(String.is_empty(s), Cfg.login_source_known(s), s)
+
+# A source that was named needs a database, and a firefox one needs it named by
+# hand: a profile directory is not guessable from here, and reading the wrong
+# profile's session is worse than not reading one.
+def Cfg.db_wanted(blank: Bool, +source: String) -> Maybe<&2, D.Error>:
+  match blank:
+    case True{}:
+      Some{D.err_hint(
+        D.ErrUsage{},
+        "--cookie-source " ++ source ++ " needs a cookie database",
+        "--cookie-db PATH, which for firefox is <profile>/cookies.sqlite"
+      )}
+    case False{}:
+      None{}
+
+def Cfg.db_gate(blank_source: Bool, blank_db: Bool, +source: String) -> Maybe<&2, D.Error>:
+  match blank_source:
+    case True{}:
+      None{}
+    case False{}:
+      Cfg.db_wanted(blank_db, source)
+
+def Cfg.cookie_db_error(+source: String, +db: String) -> Maybe<&2, D.Error>:
+  Cfg.db_gate(String.is_empty(source), String.is_empty(db), source)
+
+# Where the cache lives: named if it was named, and otherwise the operator's home
+# with `/.config/bird/settings.json` under it. `--home` is not a setting a person
+# writes -- the interpreter passes HOME through as an item, which is how a default
+# path can depend on the world without the pure fold reading it.
+def Cfg.settings_path_on(+items: List<&2, D.Item>, +env: List<&2, D.Item>, +rc: List<&2, D.Item>) -> String:
+  Cfg.order(
+    items,
+    env,
+    rc,
+    "--settings-path",
+    Cfg.default_settings_path(Cfg.order(items, env, rc, "--home", SNil{}))
+  )
+
+# A source that was not asked for is only a problem when there is nothing to fetch
+# the bundle with: `bird login` on its own refreshes the rotating settings for the
+# session the flags, the environment or the cache already hold.
+def Cfg.session_verdict(has_session: Bool) -> Maybe<&2, D.Error>:
+  match has_session:
+    case True{}:
+      None{}
+    case False{}:
+      Some{D.err_hint(
+        D.ErrUsage{},
+        "login has no session to read the bundle with",
+        "--cookie-source chrome|firefox, or --auth-token and --ct0"
+      )}
+
+def Cfg.session_gate(no_source: Bool, has_session: Bool) -> Maybe<&2, D.Error>:
+  match no_source:
+    case False{}:
+      None{}
+    case True{}:
+      Cfg.session_verdict(has_session)
+
+def Cfg.session_error(+source: String, +at: String, +ct0: String) -> Maybe<&2, D.Error>:
+  Cfg.session_gate(String.is_empty(source), Cfg.both_set(at, ct0))
+
+def Cfg.blank_gate(blank: Bool, +name: String, +hint: String) -> Maybe<&2, D.Error>:
+  match blank:
+    case True{}:
+      Some{D.err_hint(D.ErrUsage{}, name ++ " is not set, and login has to write the cache somewhere", hint)}
+    case False{}:
+      None{}
+
+def Cfg.settings_error(+path: String) -> Maybe<&2, D.Error>:
+  Cfg.blank_gate(String.is_empty(path), "--settings-path", "HOME is not set, so the default cannot be worked out; pass one")
+
+# The four refusals, first one wins, so the run names the thing a person would fix
+# first rather than whatever the last check happened to notice.
+def Cfg.login_error(+lc: D.LoginCfg) -> Maybe<&2, D.Error>:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      Err.first(
+        Cfg.cookie_source_error(source),
+        Err.first(
+          Cfg.cookie_db_error(source, db),
+          Cfg.settings_error(settings_path)
+        )
+      )
+
 # ── the whole resolution, once, at startup ──────────────────────────────
 #
 # The values a deployment has to supply -- the operation ids, the web bearer and

@@ -5,6 +5,8 @@ import ./policy.bend as P
 import ./argv.bend as A
 import ./api.bend as Api
 import ./http.bend as H
+import ./bundle.bend as B
+import ./cookies.bend as C
 
 # The fold. One message in, the new model and the effects to run next out. No IO
 # anywhere, so a test plays a whole run by handing it scripted messages in the
@@ -39,6 +41,19 @@ def Update.id_fixture() -> U32:
 def Update.id_request() -> U32:
   7
 
+# The settings cache is read in the same round as the config file: it is the other
+# file whose contents are settings.
+def Update.id_settings() -> U32:
+  6
+
+# Every command the login flow runs shares one id, because only one is ever open:
+# the step in the phase says which one, exactly as the media queue does.
+def Update.id_login() -> U32:
+  5
+
+def Update.why_settings() -> String:
+  "settings"
+
 # Media requests get an id of their own, so an upload answer can never be
 # mistaken for the post's. Uploads run one at a time, so one id covers them all.
 def Update.id_media() -> U32:
@@ -52,6 +67,25 @@ def Update.why_text() -> String:
 
 def Update.why_fixture() -> String:
   "fixture"
+
+# ── which verb is this ─────────────────────────────────────────────────
+
+def Update.is_login(+v: D.Verb) -> Bool:
+  match v:
+    case D.VerbLogin{}:
+      True{}
+    case _:
+      False{}
+
+def Update.is_chrome(+s: String) -> Bool:
+  match s:
+    case "chrome":
+      True{}
+    case _:
+      False{}
+
+def Update.have_source(+s: String) -> Bool:
+  Bool.not(String.is_empty(s))
 
 # ── reads ───────────────────────────────────────────────────────────────
 #
@@ -73,10 +107,38 @@ def Update.two_reads(+text_path: String, +fixture_path: String) -> List<&2, D.Cm
 
 # The first round: the config file, if one was named. A run that named none opens
 # the second round instead.
+# The first round opens both files whose contents are settings: the config file, if
+# one was named, and the cache `login` writes. A missing cache is not an error,
+# exactly as a missing config file is not, and both land in the same list in the
+# order the resolver reads: a config file wins over the cache because the cache is
+# prepended when it lands.
+# `login` does not read the cache, because it writes it: a cache that has been
+# corrupted is then something `login` can repair rather than something that stops
+# the repair from running.
+def Update.cache_read_path(wanted: Bool, path: String) -> List<&2, D.Cmd>:
+  match wanted:
+    case True{}:
+      Update.read(False{}, Update.id_settings(), path, Update.why_settings())
+    case False{}:
+      Nil{}
+
+def Update.cache_read(wanted: Bool, +path: String) -> List<&2, D.Cmd>:
+  Update.cache_read_path(Bool.and(wanted, Bool.not(String.is_empty(path))), path)
+
+# The verb is read straight out of the start rather than through the accessor
+# defined below, because a def may only call one that is written before it.
+def Update.cache_needed(+s: D.Start) -> Bool:
+  match s:
+    case D.Start{stage, items, env, rc, tty, config_path, text, fixture, pending}:
+      Bool.not(Update.is_login(P.Cfg.verb(items, D.VerbHelp{})))
+
 def Update.first_reads(+s: D.Start) -> List<&2, D.Cmd>:
   match s:
     case D.Start{stage, items, env, rc, tty, config_path, text, fixture, pending}:
-      Update.read(String.is_empty(config_path), Update.id_config(), config_path, Update.why_config())
+      List.append(&2, D.Cmd,
+        Update.read(String.is_empty(config_path), Update.id_config(), config_path, Update.why_config()),
+        Update.cache_read(Update.cache_needed(s), P.Cfg.settings_path_on(items, env, rc))
+      )
 
 def Update.text_path(+s: D.Start) -> String:
   match s:
@@ -177,8 +239,20 @@ def Update.phase_id(+p: D.Phase) -> Maybe<&2, U32>:
       Some{id}
     case D.PhaseMedia{jobs, done}:
       Some{Update.id_media()}
+    case D.PhaseLogin{step, loot}:
+      Some{Update.id_login()}
     case _:
       None{}
+
+def Update.login_phase_on(+p: D.Phase) -> Bool:
+  match p:
+    case D.PhaseLogin{step, loot}:
+      True{}
+    case _:
+      False{}
+
+def Update.is_login_phase(+m: D.Model) -> Bool:
+  Update.login_phase_on(Update.phase_in(m))
 
 def Update.id_matches(+want: Maybe<&2, U32>, id: U32) -> Bool:
   match want:
@@ -270,6 +344,496 @@ def Update.transport_ok(+e: Maybe<&2, D.Error>, +http_status: U32, +body: String
 # The answer handlers are further down, after the media queue they can open:
 # Bend has no forward declarations, so a handler that may queue an upload cannot
 # stand above the def that queues it.
+
+# ── the login flow ──────────────────────────────────────────────────────
+#
+# `login` goes and gets what a run needs rather than being handed it, and it is a
+# queue of local programs and two requests folded the way a media write is: the
+# step says which command is open and the loot is what the steps before it learned
+# and the ones after it need.
+#
+# There is no login here. No password goes to X and no credential is obtained from
+# it: the session comes out of a browser that is already signed in, the bearer and
+# the operation ids out of the bundle that browser loads, and the file they are
+# written to is what a later run reads. See docs/decisions/0001-design-bird.md
+# for why that is a deliberate reversal of an earlier non-goal.
+#
+# The pages and the bundle are ordinary requests, so they go through the same
+# `CmdHttp` the transport uses and land on the same `MsgHttpOk`; everything else is
+# `CmdExec`, which is `Process.run` with the program named by the fold. Nothing
+# here builds a request of its own shape.
+
+def Update.login_internal() -> D.Error:
+  D.err(D.ErrInternal{}, "internal: a login answer arrived with no login step open")
+
+def Update.login_source_lost() -> D.Error:
+  D.err_hint(
+    D.ErrUsage{},
+    "the browser had no x.com session to import",
+    "check --cookie-db: the database has to be the profile you are signed in with"
+  )
+
+def Update.login_key_lost() -> D.Error:
+  D.err_hint(
+    D.ErrAuth{},
+    "the keychain password did not decrypt the cookie",
+    "pass --chrome-key, or unlock the login keychain so `security` can read it"
+  )
+
+def Update.login_page_lost() -> D.Error:
+  D.err_hint(
+    D.ErrAuth{},
+    "the page came back signed out, so the session was not accepted",
+    "the cookies may have expired; sign in again and re-run login"
+  )
+
+def Update.login_bundle_lost(+name: String) -> D.Error:
+  D.err_hint(
+    D.ErrUpstream{},
+    "X's bundle no longer carries " ++ name,
+    "X renamed or moved its operations; pass that setting by hand for now"
+  )
+
+def Update.login_write_lost(+path: String, message: String) -> D.Error:
+  D.err_hint(
+    D.ErrUsage{},
+    "cannot write the settings cache: " ++ path,
+    message
+  )
+
+def Update.timeout_in(+cfg: D.RunCfg) -> U32:
+  match cfg:
+    case D.RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      timeout_ms
+
+def Update.cfg_timeout(+m: D.Model) -> U32:
+  Update.timeout_in(Update.cfg_of(m))
+
+def Update.login_cfg(+m: D.Model) -> D.LoginCfg:
+  P.Cfg.login_cfg_on(
+    Update.items_in(Update.start_of(m)),
+    Update.env_in(Update.start_of(m)),
+    Update.rc_in(Update.start_of(m))
+  )
+
+def Update.session_at(+m: D.Model) -> String:
+  P.Cfg.order(Update.items_in(Update.start_of(m)), Update.env_in(Update.start_of(m)), Update.rc_in(Update.start_of(m)), "--auth-token", SNil{})
+
+def Update.session_ct0(+m: D.Model) -> String:
+  P.Cfg.order(Update.items_in(Update.start_of(m)), Update.env_in(Update.start_of(m)), Update.rc_in(Update.start_of(m)), "--ct0", SNil{})
+
+def Update.login_settings_path(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      settings_path
+
+def Update.login_source(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      source
+
+def Update.login_web_home(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      web_home
+
+def Update.login_db(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      db
+
+def Update.login_bundle_base(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      bundle_base
+
+def Update.tmp_dir_of(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      tmp_dir
+
+def Update.chrome_key_of(+lc: D.LoginCfg) -> String:
+  match lc:
+    case D.LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}:
+      chrome_key
+
+def Update.loot_dir(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      dir
+
+def Update.loot_url(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      url
+
+def Update.loot_password(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      password
+
+def Update.loot_key(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      key
+
+def Update.loot_at(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      at
+
+def Update.loot_ct0(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      ct0
+
+def Update.loot_cache(+l: D.Loot) -> String:
+  match l:
+    case D.Loot{dir, url, password, key, at, ct0, cache}:
+      cache
+
+def Update.json_of(+p: J.Parsed) -> J.Json:
+  match p:
+    case J.ParsedOk{value}:
+      value
+    case J.ParsedErr{message}:
+      J.null()
+
+# ── the commands ────────────────────────────────────────────────────────
+
+def Update.cookie_sql_on(chrome: Bool, +dir: String) -> String:
+  match chrome:
+    case True{}:
+      C.Cookies.chrome_sql(dir)
+    case False{}:
+      C.Cookies.firefox_sql()
+
+def Update.cookies_cmd(+loot: D.Loot, +lc: D.LoginCfg) -> D.Cmd:
+  D.CmdExec{Update.id_login(), C.Cookies.sqlite3(), C.Cookies.sqlite_args(Update.login_db(lc), Update.cookie_sql_on(Update.is_chrome(Update.login_source(lc)), Update.loot_dir(loot)))}
+
+# The page wants the session and nothing else: a browser loading its own page
+# sends the cookies, and the bearer is only used by the API calls the page's own
+# scripts make.
+def Update.login_headers(+at: String, +ct0: String) -> List<&2, D.Header>:
+  D.hdr("cookie", Api.Api.cookie(at, ct0)) <> (
+    D.hdr("x-csrf-token", ct0) <> (
+      D.hdr("x-twitter-active-user", "yes") <> Nil{}
+    )
+  )
+
+def Update.page_cmd(+loot: D.Loot, +lc: D.LoginCfg, timeout_ms: U32) -> D.Cmd:
+  D.CmdHttp{Update.id_login(), D.mk_http("GET", Update.login_web_home(lc), Update.login_headers(Update.loot_at(loot), Update.loot_ct0(loot)), SNil{}, timeout_ms)}
+
+def Update.bundle_cmd(+loot: D.Loot, timeout_ms: U32) -> D.Cmd:
+  D.CmdHttp{Update.id_login(), D.mk_http("GET", Update.loot_url(loot), Nil{}, SNil{}, timeout_ms)}
+
+def Update.write_cmd(+loot: D.Loot, +lc: D.LoginCfg) -> D.Cmd:
+  D.CmdWriteFile{Update.id_login(), Update.login_settings_path(lc), Update.loot_cache(loot)}
+
+def Update.lock_cmd(+lc: D.LoginCfg) -> D.Cmd:
+  D.CmdExec{Update.id_login(), C.Cookies.chmod(), C.Cookies.chmod_args(Update.login_settings_path(lc))}
+
+def Update.login_cmd(step: D.LoginStep, +loot: D.Loot, +lc: D.LoginCfg, timeout_ms: U32) -> D.Cmd:
+  match step:
+    case D.LoginCookies{}:
+      Update.cookies_cmd(loot, lc)
+    case D.LoginKey{}:
+      D.CmdExec{Update.id_login(), C.Cookies.security(), C.Cookies.security_args()}
+    case D.LoginDerive{}:
+      D.CmdExec{Update.id_login(), C.Cookies.openssl(), C.Cookies.kdf_args(Update.loot_password(loot))}
+    case D.LoginDecrypt{}:
+      D.CmdExec{Update.id_login(), C.Cookies.openssl(), C.Cookies.decrypt_args(Update.loot_key(loot), C.Cookies.path(Update.loot_dir(loot), C.Cookies.at_name()))}
+    case D.LoginDecrypt2{}:
+      D.CmdExec{Update.id_login(), C.Cookies.openssl(), C.Cookies.decrypt_args(Update.loot_key(loot), C.Cookies.path(Update.loot_dir(loot), C.Cookies.ct0_name()))}
+    case D.LoginClean{}:
+      D.CmdExec{Update.id_login(), "rm", C.Cookies.rm_args(Update.loot_dir(loot))}
+    case D.LoginPage{}:
+      Update.page_cmd(loot, lc, timeout_ms)
+    case D.LoginBundle{}:
+      Update.bundle_cmd(loot, timeout_ms)
+    case D.LoginWrite{}:
+      Update.write_cmd(loot, lc)
+    case D.LoginLock{}:
+      Update.lock_cmd(lc)
+    case _:
+      D.CmdExit{0, SNil{}}
+
+# Opening a step is one thing: the phase records where the run is and the next
+# command goes out. A step with nothing to send (the end) opens nothing.
+def Update.login_step(+step: D.LoginStep, +loot: D.Loot, +lc: D.LoginCfg, timeout_ms: U32, +m: D.Model) -> D.Step:
+  D.mk_step(
+    D.Model.set_phase(m, D.PhaseLogin{step, loot}),
+    Update.login_cmd(step, loot, lc, timeout_ms) <> Nil{}
+  )
+
+# ── what one answer turns into ──────────────────────────────────────────
+
+def Update.both_here(+at: String, +ct0: String) -> Bool:
+  C.Cookies.present(at, ct0)
+
+def Update.chrome_key_on(from_keychain: Bool, +loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match from_keychain:
+    case True{}:
+      Update.login_step(D.LoginKey{}, loot, lc, Update.cfg_timeout(m), m)
+    case False{}:
+      Update.login_step(D.LoginDerive{}, loot, lc, Update.cfg_timeout(m), m)
+
+# `--chrome-key` is the whole reason the Chrome path is testable, and it is also
+# the answer on a machine whose key is not in the login keychain. When it is
+# absent the password is read from the keychain, and that is the one step that can
+# wait for a person.
+def Update.chrome_key(+loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  Update.chrome_key_on(String.is_empty(Update.loot_password(loot)), loot, lc, m)
+
+def Update.key_taken(blank: Bool, +loot: D.Loot, +password: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match blank:
+    case True{}:
+      D.mk_step(D.Model.failed(m, Update.login_key_lost()), Nil{})
+    case False{}:
+      Update.login_step(D.LoginDerive{}, D.Loot.with_password(loot, password), lc, Update.cfg_timeout(m), m)
+
+def Update.key_ready(ok: Bool, +loot: D.Loot, +key: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match ok:
+    case False{}:
+      D.mk_step(D.Model.failed(m, Update.login_key_lost()), Nil{})
+    case True{}:
+      Update.login_step(D.LoginDecrypt{}, D.Loot.with_key(loot, key), lc, Update.cfg_timeout(m), m)
+
+def Update.decrypted(blank: Bool, +loot: D.Loot, +at: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match blank:
+    case True{}:
+      D.mk_step(D.Model.failed(m, Update.login_key_lost()), Nil{})
+    case False{}:
+      Update.login_step(D.LoginDecrypt2{}, D.Loot.with_at(loot, at), lc, Update.cfg_timeout(m), m)
+
+def Update.decrypted2(blank: Bool, +loot: D.Loot, +ct0: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match blank:
+    case True{}:
+      D.mk_step(D.Model.failed(m, Update.login_key_lost()), Nil{})
+    case False{}:
+      Update.login_step(D.LoginClean{}, D.Loot.with_ct0(loot, ct0), lc, Update.cfg_timeout(m), m)
+
+def Update.page_read(ok: Bool, +loot: D.Loot, +url: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match ok:
+    case False{}:
+      D.mk_step(D.Model.failed(m, Update.login_page_lost()), Nil{})
+    case True{}:
+      Update.login_step(D.LoginBundle{}, D.Loot.with_url(loot, url), lc, Update.cfg_timeout(m), m)
+
+def Update.bundle_ok(+found: B.Found, +loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +cache : String = B.Bundle.cache_text(found, Update.loot_at(loot), Update.loot_ct0(loot))
+  Update.login_step(D.LoginWrite{}, D.Loot.with_cache(loot, cache), lc, Update.cfg_timeout(m), m)
+
+def Update.bundle_read(+missing: String, +found: B.Found, +loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match missing:
+    case "":
+      Update.bundle_ok(found, loot, lc, m)
+    case _:
+      D.mk_step(D.Model.failed(m, Update.login_bundle_lost(missing)), Nil{})
+
+# ── starting ────────────────────────────────────────────────────────────
+
+def Update.first_cookie_step(importing: Bool) -> D.LoginStep:
+  match importing:
+    case True{}:
+      D.LoginCookies{}
+    case False{}:
+      D.LoginPage{}
+
+def Update.login_first_step(source: String) -> D.LoginStep:
+  Update.first_cookie_step(Update.have_source(source))
+
+# The loot opens with the cookies the settings themselves name, and the browser's
+# replace them when a source was asked for: the step after the import then reads
+# the same two fields either way, and a run with no source is a refresh of the
+# bundle for a session that came from a flag or the cache.
+def Update.login_open(+lc: D.LoginCfg, +m: D.Model, timeout_ms: U32) -> D.Step:
+  loot : D.Loot = D.mk_loot(
+    Update.tmp_dir_of(lc),
+    SNil{},
+    Update.chrome_key_of(lc),
+    SNil{},
+    Update.session_at(m),
+    Update.session_ct0(m),
+    SNil{}
+  )
+  Update.login_step(Update.login_first_step(Update.login_source(lc)), loot, lc, timeout_ms, m)
+
+def Update.login_gate2(+bad: Maybe<&2, D.Error>, +lc: D.LoginCfg, +m: D.Model, timeout_ms: U32) -> D.Step:
+  match bad:
+    case Some{e}:
+      D.mk_step(D.Model.failed(m, e), Nil{})
+    case None{}:
+      Update.login_open(lc, m, timeout_ms)
+
+def Update.login_gate(+bad_cfg: Maybe<&2, D.Error>, +bad_session: Maybe<&2, D.Error>, +lc: D.LoginCfg, +m: D.Model, timeout_ms: U32) -> D.Step:
+  match bad_cfg:
+    case Some{e}:
+      D.mk_step(D.Model.failed(m, e), Nil{})
+    case None{}:
+      Update.login_gate2(bad_session, lc, m, timeout_ms)
+
+def Update.login_start(+m: D.Model, timeout_ms: U32) -> D.Step:
+  +lc : D.LoginCfg = Update.login_cfg(m)
+  Update.login_gate(
+    P.Cfg.login_error(lc),
+    P.Cfg.session_error(Update.login_source(lc), Update.session_at(m), Update.session_ct0(m)),
+    lc,
+    m,
+    timeout_ms
+  )
+
+# ── the end: the cache and the report ───────────────────────────────────
+
+#
+# The report is the settings that were written, read back out of the cache the run
+# is about to keep, and the two cookies are deliberately not in it: they are in the
+# file, and a token printed to a terminal is a token in a scrollback.
+def Update.cookie_origin(+source: String) -> String:
+  match source:
+    case "":
+      "the settings this run already had"
+    case _:
+      "imported from " ++ source
+
+def Update.login_json(+j: J.Json, +path: String, +source: String) -> J.Json:
+  J.obj7(
+    J.pair("settings_path", J.of_str(path)),
+    J.pair("cookies", J.of_str(Update.cookie_origin(source))),
+    J.pair("web_bearer", J.get_or_null(j, "--web-bearer")),
+    J.pair("op_viewer", J.get_or_null(j, "--op-viewer")),
+    J.pair("op_tweet_detail", J.get_or_null(j, "--op-tweet-detail")),
+    J.pair("op_search", J.get_or_null(j, "--op-search")),
+    J.pair("op_create_tweet", J.get_or_null(j, "--op-create-tweet"))
+  )
+
+def Update.login_report(+loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +j : J.Json = Update.json_of(J.parse(Update.loot_cache(loot)))
+  +path : String = Update.login_settings_path(lc)
+  D.mk_step(
+    D.Model.done(m, Update.login_json(j, path, Update.login_source(lc)), Nil{}),
+    Nil{}
+  )
+
+def Update.login_wrote_on(ok: Bool, +path: String, message: String, +loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match ok:
+    case True{}:
+      Update.login_step(D.LoginLock{}, loot, lc, Update.cfg_timeout(m), m)
+    case False{}:
+      D.mk_step(D.Model.failed(m, Update.login_write_lost(path, message)), Nil{})
+
+# ── an answer to a local program ────────────────────────────────────────
+
+def Update.cookies_next(chrome: Bool, +loot: D.Loot, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match chrome:
+    case True{}:
+      Update.chrome_key(loot, lc, m)
+    case False{}:
+      Update.login_step(D.LoginPage{}, loot, lc, Update.cfg_timeout(m), m)
+
+# The next step depends on which browser the cookies came from: Chrome still owes a
+# password and two decryptions, Firefox is done.
+def Update.cookies_ok(+loot: D.Loot, +at: String, +ct0: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +next : D.Loot = D.Loot.with_at(D.Loot.with_ct0(loot, ct0), at)
+  Update.cookies_next(Update.is_chrome(Update.login_source(lc)), next, lc, m)
+
+def Update.cookies_taken(both: Bool, +loot: D.Loot, +at: String, +ct0: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match both:
+    case False{}:
+      D.mk_step(D.Model.failed(m, Update.login_source_lost()), Nil{})
+    case True{}:
+      Update.cookies_ok(loot, at, ct0, lc, m)
+
+# Firefox's answer is the two cookies, so this is where they are read. Chrome's
+# answer is the number of bytes `writefile` wrote -- the blobs are on disk, not in
+# the output -- so a Chrome run never comes through here: the step after the import
+# is the key, and the cookies arrive from the two decryptions.
+def Update.login_cookies_in(+loot: D.Loot, +out: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +at : String = C.Cookies.firefox_at(out)
+  +ct0 : String = C.Cookies.firefox_ct0(out)
+  Update.cookies_taken(Update.both_here(at, ct0), loot, at, ct0, lc, m)
+
+def Update.login_key_in(+loot: D.Loot, +out: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +password : String = String.trim(out)
+  Update.key_taken(String.is_empty(password), loot, password, lc, m)
+
+def Update.login_derive_in(+loot: D.Loot, +out: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +key : String = C.Cookies.key_of(out)
+  Update.key_ready(C.Cookies.key_ok(key), loot, key, lc, m)
+
+def Update.login_decrypt_in(+loot: D.Loot, +out: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +at : String = C.Cookies.chrome_value(out)
+  Update.decrypted(String.is_empty(at), loot, at, lc, m)
+
+def Update.login_decrypt2_in(+loot: D.Loot, +out: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +ct0 : String = C.Cookies.chrome_value(out)
+  Update.decrypted2(String.is_empty(ct0), loot, ct0, lc, m)
+
+# The login settings are recomputed here rather than carried: what the login flow
+# needs out of them is the same in every step, and a def may not bind a local
+# before a `match` that reads one of its parameters, which is the shape the two
+# answers below both have.
+def Update.login_cookies_on(chrome: Bool, +loot: D.Loot, +out: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  match chrome:
+    case True{}:
+      Update.chrome_key(loot, lc, m)
+    case False{}:
+      Update.login_cookies_in(loot, out, lc, m)
+
+def Update.login_proc_on(step: D.LoginStep, +loot: D.Loot, +out: String, +m: D.Model, +lc: D.LoginCfg) -> D.Step:
+  match step:
+    case D.LoginCookies{}:
+      Update.login_cookies_on(Update.is_chrome(Update.login_source(lc)), loot, out, lc, m)
+    case D.LoginKey{}:
+      Update.login_key_in(loot, out, lc, m)
+    case D.LoginDerive{}:
+      Update.login_derive_in(loot, out, lc, m)
+    case D.LoginDecrypt{}:
+      Update.login_decrypt_in(loot, out, lc, m)
+    case D.LoginDecrypt2{}:
+      Update.login_decrypt2_in(loot, out, lc, m)
+    case D.LoginClean{}:
+      Update.login_step(D.LoginPage{}, loot, lc, Update.cfg_timeout(m), m)
+    case D.LoginLock{}:
+      Update.login_report(loot, lc, m)
+    case _:
+      D.mk_step(D.Model.failed(m, Update.login_internal()), Nil{})
+
+# A non-zero exit from a local program is not read as data: the step that asked
+# for it says what an empty answer meant already, and `sqlite3` on a database that
+# is not there would otherwise look like a browser with no session.
+def Update.login_proc_phase(+p: D.Phase, +out: String, +m: D.Model) -> D.Step:
+  match p:
+    case D.PhaseLogin{step, loot}:
+      Update.login_proc_on(step, loot, out, m, Update.login_cfg(m))
+    case _:
+      D.mk_step(D.Model.failed(m, Update.login_internal()), Nil{})
+
+# ── an answer to the page and the bundle ────────────────────────────────
+
+def Update.login_page_in(+loot: D.Loot, +body: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +url : String = B.Bundle.identify(Update.login_bundle_base(lc), body)
+  Update.page_read(B.Bundle.identified(Update.login_bundle_base(lc), body), loot, url, lc, m)
+
+def Update.login_bundle_in(+loot: D.Loot, +body: String, +lc: D.LoginCfg, +m: D.Model) -> D.Step:
+  +found : B.Found = B.Bundle.found(body)
+  Update.bundle_read(B.Bundle.missing(found), found, loot, lc, m)
+
+def Update.login_http_in(step: D.LoginStep, +loot: D.Loot, +body: String, +m: D.Model, +lc: D.LoginCfg) -> D.Step:
+  match step:
+    case D.LoginPage{}:
+      Update.login_page_in(loot, body, lc, m)
+    case D.LoginBundle{}:
+      Update.login_bundle_in(loot, body, lc, m)
+    case _:
+      D.mk_step(D.Model.failed(m, Update.login_internal()), Nil{})
+
+def Update.login_http_phase(+p: D.Phase, +body: String, +m: D.Model) -> D.Step:
+  match p:
+    case D.PhaseLogin{step, loot}:
+      Update.login_http_in(step, loot, body, m, Update.login_cfg(m))
+    case _:
+      D.mk_step(D.Model.failed(m, Update.login_internal()), Nil{})
 
 # ── resolving and routing ───────────────────────────────────────────────
 
@@ -580,12 +1144,25 @@ def Update.is_media_phase(+m: D.Model) -> Bool:
 # The two roads out of an answer. The plain one keeps the body as the run's
 # payload; the media one hands the body to the queue and only keeps it as the
 # payload when the post itself answers, which is why the two cannot share a tail.
-def Update.answer_kind(is_media: Bool, curl_status: U32, +http_status: U32, +body: String, +stderr: String, +m: D.Model) -> D.Step:
+def Update.answer_plain(is_media: Bool, curl_status: U32, +http_status: U32, +body: String, +stderr: String, +m: D.Model) -> D.Step:
   match is_media:
     case True{}:
       Update.media_answer(curl_status, http_status, body, stderr, m)
     case False{}:
       Update.transport_ok(H.Http.transport_error(curl_status), http_status, body, stderr, m)
+
+# A login answer is not JSON and has no status contract, so it takes the branch
+# before the transport's own reading: the page and the bundle are read for what is
+# in them, and a body without it is what a refusal looks like.
+def Update.answer_route(login: Bool, is_media: Bool, curl_status: U32, +http_status: U32, +body: String, +stderr: String, +m: D.Model) -> D.Step:
+  match login:
+    case True{}:
+      Update.login_http_phase(Update.phase_in(m), body, m)
+    case False{}:
+      Update.answer_plain(is_media, curl_status, http_status, body, stderr, m)
+
+def Update.answer_kind(is_media: Bool, curl_status: U32, +http_status: U32, +body: String, +stderr: String, +m: D.Model) -> D.Step:
+  Update.answer_route(Update.is_login_phase(m), is_media, curl_status, http_status, body, stderr, m)
 
 def Update.http_matched(ok: Bool, curl_status: U32, +http_status: U32, +body: String, +stderr: String, +m: D.Model) -> D.Step:
   match ok:
@@ -659,9 +1236,17 @@ def Update.merged_verb(+verb: D.Verb, +m: D.Model) -> D.Verb:
     Update.text_in(Update.start_of(m))
   )
 
-def Update.routed(+m: D.Model, +cfg: D.RunCfg) -> D.Step:
-  match cfg:
-    case D.RunCfg{+verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+# `login` is answered before the ordinary road because it is not a request: it is
+# a queue of local programs and two requests of its own, and nothing the transport
+# builds applies to it. Every other verb takes the road it took before.
+# The config is put on the model before the login flow starts, because the flow
+# answers with the verb it ran: without this the report came out as `"verb":"help"`,
+# which is the initial model's default and a lie about what the run did.
+def Update.route_on(login: Bool, +verb: D.Verb, +m: D.Model, +cfg: D.RunCfg, dry_run: Bool, timeout_ms: U32, +fixture: String) -> D.Step:
+  match login:
+    case True{}:
+      Update.login_start(D.Model.with_cfg(m, cfg), timeout_ms)
+    case False{}:
       # The fixture that answers is the file's text, not the path the setting
       # named: `fixture_path` is where to look, and the read put the contents in
       # the start's fixture. Passing the path here answers every run with a
@@ -671,6 +1256,19 @@ def Update.routed(+m: D.Model, +cfg: D.RunCfg) -> D.Step:
         Update.merged_verb(verb, m),
         D.Model.with_cfg(m, cfg),
         dry_run,
+        fixture
+      )
+
+def Update.routed(+m: D.Model, +cfg: D.RunCfg) -> D.Step:
+  match cfg:
+    case D.RunCfg{+verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
+      Update.route_on(
+        Update.is_login(verb),
+        verb,
+        m,
+        cfg,
+        dry_run,
+        timeout_ms,
         Update.fixture_in(Update.start_of(m))
       )
 
@@ -706,15 +1304,20 @@ def Update.files_round_on(none: Bool, +model: D.Model, +s: D.Start) -> D.Step:
 def Update.files_round(+model: D.Model, +s: D.Start) -> D.Step:
   Update.files_round_on(List.is_empty(&2, D.Cmd, Update.second_reads(s)), model, s)
 
-def Update.config_round_on(no_config: Bool, +model: D.Model, +s: D.Start) -> D.Step:
-  match no_config:
+# The first round opens when it has something to read, and that is now two files
+# rather than one: the config file, if a run named one, and the settings cache
+# `login` writes, if the path resolved to one. Asking `first_reads` rather than the
+# config path is what keeps a run with no `--config` from skipping the cache too,
+# which it did until a scenario with no flags at all caught it.
+def Update.config_round_on(first_none: Bool, +model: D.Model, +s: D.Start) -> D.Step:
+  match first_none:
     case True{}:
       Update.files_round(model, D.Start.with_stage(s, D.StageFiles{}))
     case False{}:
       Update.gather(model, D.Start.with_stage(s, D.StageConfig{}), Update.first_reads(s))
 
 def Update.config_round(+model: D.Model, +s: D.Start) -> D.Step:
-  Update.config_round_on(String.is_empty(Update.config_path_in(s)), model, s)
+  Update.config_round_on(List.is_empty(&2, D.Cmd, Update.first_reads(s)), model, s)
 
 def Update.begin(+items: List<&2, D.Item>, +env: List<&2, D.Item>, tty: Bool, config_path: String, model: D.Model) -> D.Step:
   Update.config_round(model, D.mk_start(D.StageConfig{}, items, env, Nil{}, tty, config_path, SNil{}, SNil{}, 0n))
@@ -793,12 +1396,18 @@ def Update.rc_bad(path: String, +message: String) -> D.Error:
     "{\"--auth-token\": \"...\", \"--count\": 5} is the shape"
   )
 
+# Appended rather than replaced: the settings cache lands in the same round and
+# prepends, so `cache ++ config` holds whichever order the two reads answered in,
+# and the resolver's last-match-wins puts the config file ahead of the cache.
 def Update.rc_checked_on(+bad: Maybe<&2, String>, +m: D.Model, +json: J.Json) -> D.Step:
   match bad:
     case Some{name}:
       D.mk_step(D.Model.failed(m, Update.rc_error(Update.config_at(m), name)), D.no_cmds())
     case None{}:
-      Update.landed(D.Model.gathering(m, D.Start.one_less(D.Start.with_rc(Update.start_of(m), P.Cfg.rc_items(J.fields(json))))))
+      Update.landed(D.Model.gathering(m, D.Start.one_less(D.Start.with_rc(
+        Update.start_of(m),
+        List.append(&2, D.Item, Update.rc_in(Update.start_of(m)), P.Cfg.rc_items(J.fields(json)))
+      ))))
 
 def Update.rc_checked(+m: D.Model, +json: J.Json) -> D.Step:
   Update.rc_checked_on(Update.rc_bad_key(json), m, json)
@@ -835,15 +1444,66 @@ def Update.recorded(+s: D.Start, id: U32, text: String) -> D.Start:
 def Update.read_landed(+m: D.Model, +id: U32, text: String) -> D.Step:
   Update.landed(D.Model.gathering(m, D.Start.one_less(Update.recorded(Update.start_of(m), id, text))))
 
-def Update.file_ok_on(is_config: Bool, id: U32, text: String, +model: D.Model) -> D.Step:
+# The settings cache is the third file whose contents are settings. It is read
+# this way rather than through the config path because its keys are the same flag
+# names and it has to lose to the config file, which prepending gives.
+#
+# A cache that is not a JSON object is refused by name rather than ignored: a
+# setting that silently does nothing is the failure this whole design avoids, and
+# the path it names is what a person deletes.
+def Update.settings_at(+m: D.Model) -> String:
+  P.Cfg.settings_path_on(
+    Update.items_in(Update.start_of(m)),
+    Update.env_in(Update.start_of(m)),
+    Update.rc_in(Update.start_of(m))
+  )
+
+def Update.cache_bad(+j: J.Json) -> Bool:
+  Bool.not(J.is_obj(j))
+
+def Update.cache_error(path: String) -> D.Error:
+  D.err_hint(
+    D.ErrUsage{},
+    "the settings cache is not usable: " ++ path,
+    "delete it, or run `bird login` again: it does not read the cache it writes"
+  )
+
+def Update.cache_landed_on(+bad: Bool, +path: String, +m: D.Model, +p: J.Parsed) -> D.Step:
+  match bad:
+    case True{}:
+      D.mk_step(D.Model.failed(m, Update.cache_error(path)), D.no_cmds())
+    case False{}:
+      Update.landed(D.Model.gathering(m, D.Start.one_less(D.Start.with_rc(
+        Update.start_of(m),
+        List.append(&2, D.Item, P.Cfg.rc_items(J.fields(Update.json_of(p))), Update.rc_in(Update.start_of(m)))
+      ))))
+
+def Update.cache_landed(+m: D.Model, text: String) -> D.Step:
+  +p : J.Parsed = J.parse(text)
+  Update.cache_landed_on(Update.cache_bad(Update.json_of(p)), Update.settings_at(m), m, p)
+
+def Update.file_ok_other(is_settings: Bool, id: U32, +text: String, +model: D.Model) -> D.Step:
+  match is_settings:
+    case True{}:
+      Update.cache_landed(model, text)
+    case False{}:
+      Update.read_landed(model, id, text)
+
+def Update.file_ok_on(is_config: Bool, is_settings: Bool, id: U32, text: String, +model: D.Model) -> D.Step:
   match is_config:
     case True{}:
       Update.rc_landed(model, text)
     case False{}:
-      Update.read_landed(model, id, text)
+      Update.file_ok_other(is_settings, id, text, model)
 
 def Update.file_ok(+id: U32, text: String, +model: D.Model) -> D.Step:
-  Update.file_ok_on(U32.is_eq(id, Update.id_config()), id, text, model)
+  Update.file_ok_on(
+    U32.is_eq(id, Update.id_config()),
+    U32.is_eq(id, Update.id_settings()),
+    id,
+    text,
+    model
+  )
 
 def Update.file_error(path: String, +message: String) -> D.Error:
   D.err_hint(
@@ -855,15 +1515,53 @@ def Update.file_error(path: String, +message: String) -> D.Error:
 # A config file that cannot be read is the one failure the run shrugs off, and
 # it still has to close the round it opened: leaving `pending` at 1 would stall a
 # run that has nothing left to wait for.
-def Update.file_fail_on(is_config: Bool, path: String, message: String, +model: D.Model) -> D.Step:
-  match is_config:
+def Update.file_fail_on(optional: Bool, path: String, message: String, +model: D.Model) -> D.Step:
+  match optional:
     case True{}:
       Update.landed(D.Model.gathering(model, D.Start.one_less(Update.start_of(model))))
     case False{}:
       D.mk_step(D.Model.failed(model, Update.file_error(path, message)), D.no_cmds())
 
 def Update.file_fail(+id: U32, path: String, message: String, +model: D.Model) -> D.Step:
-  Update.file_fail_on(U32.is_eq(id, Update.id_config()), path, message, model)
+  Update.file_fail_on(
+    Bool.or(U32.is_eq(id, Update.id_config()), U32.is_eq(id, Update.id_settings())),
+    path,
+    message,
+    model
+  )
+
+# ── answers from the login flow ─────────────────────────────────────────
+#
+# Only the login phase answers these two, and only under the login id, so a
+# message that answers nothing is ignored rather than folded -- the same rule the
+# requests use.
+
+def Update.proc_matched(ok: Bool, +out: String, +m: D.Model) -> D.Step:
+  match ok:
+    case True{}:
+      Update.login_proc_phase(Update.phase_in(m), out, m)
+    case False{}:
+      D.Step.only(m)
+
+def Update.proc_ok(id: U32, status: U32, +out: String, +err: String, +m: D.Model) -> D.Step:
+  Update.proc_matched(U32.is_eq(id, Update.id_login()), out, m)
+
+def Update.wrote_phase_on(+p: D.Phase, +ok: Bool, +path: String, +message: String, +m: D.Model) -> D.Step:
+  match p:
+    case D.PhaseLogin{step, loot}:
+      Update.login_wrote_on(ok, path, message, loot, Update.login_cfg(m), m)
+    case _:
+      D.mk_step(D.Model.failed(m, Update.login_internal()), D.no_cmds())
+
+def Update.wrote_matched(ok: Bool, +path: String, +wrote: Bool, +message: String, +m: D.Model) -> D.Step:
+  match ok:
+    case True{}:
+      Update.wrote_phase_on(Update.phase_in(m), wrote, path, message, m)
+    case False{}:
+      D.Step.only(m)
+
+def Update.wrote(id: U32, +path: String, +ok: Bool, +message: String, +m: D.Model) -> D.Step:
+  Update.wrote_matched(U32.is_eq(id, Update.id_login()), path, ok, message, m)
 
 # ── entry ───────────────────────────────────────────────────────────────
 
@@ -889,7 +1587,23 @@ def Update.classified(parsed: A.Argv, env: List<&2, D.Item>, tty: Bool, config_p
 def Update.started(+args: List<&2, String>, +env: List<&2, D.Item>, tty: Bool, config_path: String, +model: D.Model) -> D.Step:
   Update.classified(A.Argv.parse(args), env, tty, config_path, model)
 
-def Update.step(msg: D.Msg, model: D.Model) -> D.Step:
+# ── a failure ends the run ──────────────────────────────────────────────
+#
+# Nothing that arrives after a failure changes it, and that is a rule rather than
+# a detail: a round can have two answers in flight, so a config file that is
+# refused by name while the settings cache is still being read would otherwise be
+# *revived* by the cache's own landing -- and the run would report success with the
+# default verb, because the model the answer landed on was the one it replaced.
+# `tests/e2e.sh` found this with a config key the flag table does not know.
+
+def Update.is_failed_phase(+p: D.Phase) -> Bool:
+  match p:
+    case D.PhaseFailed{error}:
+      True{}
+    case _:
+      False{}
+
+def Update.dispatch(msg: D.Msg, model: D.Model) -> D.Step:
   match msg:
     case D.MsgStart{args, env, tty, config_path}:
       Update.started(args, env, tty, config_path, model)
@@ -899,3 +1613,17 @@ def Update.step(msg: D.Msg, model: D.Model) -> D.Step:
       Update.file_fail(id, path, message, model)
     case D.MsgHttpOk{id, curl_status, http_status, body, stderr}:
       Update.http_ok(id, curl_status, http_status, body, stderr, model)
+    case D.MsgProc{id, status, out, err}:
+      Update.proc_ok(id, status, out, err, model)
+    case D.MsgWrote{id, path, ok, message}:
+      Update.wrote(id, path, ok, message, model)
+
+def Update.step_over(failed: Bool, +msg: D.Msg, +model: D.Model) -> D.Step:
+  match failed:
+    case True{}:
+      D.Step.only(model)
+    case False{}:
+      Update.dispatch(msg, model)
+
+def Update.step(msg: D.Msg, +model: D.Model) -> D.Step:
+  Update.step_over(Update.is_failed_phase(Update.phase_in(model)), msg, model)

@@ -1,0 +1,113 @@
+---
+title: Login
+description: `bird login` reads a session out of Chrome or Firefox, reads the rotating settings out of X's own client bundle, and writes a settings cache every later run can use.
+---
+
+# Login
+
+Every other verb reads a credential. `login` is the one that obtains one, and it
+obtains two things at once: the session cookies out of a browser you are already
+signed into, and the values X rotates — the web bearer and the four operation ids
+— out of X's own client bundle. Both land in one settings cache, and every later
+run reads that cache with no credential flags at all:
+
+```sh
+bird login --cookie-source chrome
+bird mentions --count 20 --json      # no credentials on this command
+```
+
+## What it needs from you
+
+| flag | default | what it is |
+| --- | --- | --- |
+| `--cookie-source chrome\|firefox` | none | Which browser to read the session from. Without it, `login` refreshes the rotating settings for a session that came from flags, the environment or the cache. |
+| `--cookie-db PATH` | Chrome: `$HOME/Library/Application Support/Google/Chrome/Default/Cookies` | That browser's cookie database. Firefox has no guessable path here, so it must be named. |
+| `--chrome-key PASSWORD` | the login keychain | Chrome's own key, for the machines where it is not in the keychain — and for the test suite. See "Chrome's key" below. |
+| `--settings-path PATH` | `$HOME/.config/bird/settings.json` | Where the cache is written. |
+| `--web-home URL` | `https://x.com/home` | The page whose HTML names the client bundle. A setting so a stand-in can serve it. |
+| `--bundle-base URL` | `https://abs.twimg.com/responsive-web/client-web/` | Where the bundle is fetched from. A setting for the same reason. |
+
+Firefox holds its profile under a name that is not knowable from here, so the
+run names the flag instead of picking a profile and reading someone else's
+session:
+
+```sh
+bird login --cookie-source firefox --cookie-db "$HOME/Library/Application Support/Firefox/Profiles/<profile>/cookies.sqlite"
+```
+
+## Chrome's key
+
+Firefox's `cookies.sqlite` keeps the values in plain text. Chrome encrypts them,
+and the recipe is fixed: the key is PBKDF2-HMAC-SHA1 over the password in the
+login keychain (`Chrome Safe Storage`), salt `saltysalt`, 1003 rounds; the value
+is AES-128-CBC with a fixed IV and `v10` prepended to the plaintext.
+
+`login` runs that recipe by calling the tools that already exist — `sqlite3` for
+the blob, `security` for the password, `openssl` for the derivation and the
+decryption — and takes the two blob files away again. It has no keychain of its
+own.
+
+The decryption is checked, not trusted: a wrong key answers bytes rather than an
+error, so a value that is not a printable token is treated as a refusal. That way
+a bad key is an auth failure naming `--chrome-key`, never a cache written with a
+token-shaped lie in it.
+
+## What lands in the cache
+
+An object whose keys are flag names, so a later run reads it the way it reads any
+settings file — and a flag, then `BIRD_<FLAG>`, then the config file all win over
+it:
+
+```json
+{
+  "--auth-token": "…", "--ct0": "…",
+  "--web-bearer": "AAAA…", "--gql-features": "{}",
+  "--op-viewer": "…", "--op-tweet-detail": "…",
+  "--op-search": "…", "--op-create-tweet": "…"
+}
+```
+
+The file is written `0600`, because it is a copy of your session. The report
+`login` prints names the path and the values it found but never the cookies:
+
+```json
+{"ok":true,"verb":"login","status":0,"data":{"settings_path":"…/settings.json","cookies":"imported from chrome","web_bearer":"AAAA…","op_viewer":"…","op_tweet_detail":"…","op_search":"…","op_create_tweet":"…"},"notes":[]}
+```
+
+`login` does **not** read the cache it is about to rewrite, which is deliberate: a
+cache that has been corrupted has to be something `login` can repair rather than
+something that stops the repair from running. Every other verb reads it, in the
+same first round as the config file.
+
+## Refreshing only
+
+X rotates the bearer and the query ids, and that is the whole reason `login`
+exists as a verb rather than as a one-time setup step. With no source, it keeps
+the session it already has and re-reads the bundle:
+
+```sh
+bird login --settings-path ~/.config/bird/settings.json
+```
+
+## What it refuses, before running anything
+
+`login` is the one verb that runs local programs, so a run that cannot work says
+so first — before asking the keychain for a password or writing a byte. All four
+are exit `2`:
+
+- `--cookie-source is not a browser this build reads: safari` → `chrome or firefox`
+- `--cookie-source firefox needs a cookie database` → `--cookie-db PATH, which for firefox is <profile>/cookies.sqlite`
+- `login has no session to read the bundle with` → `--cookie-source chrome|firefox, or --auth-token and --ct0`
+- a settings path that cannot be worked out (no `HOME`) → pass `--settings-path`
+
+Two more refusals come later, and both name the thing to change: a keychain that
+answers nothing is exit `3` and names `--chrome-key`, and a bundle that is missing
+an operation is refused by name, naming the setting to pass by hand.
+
+## Testing it without a browser
+
+`--chrome-key` is why the recipe is checkable: with the key supplied, the whole
+flow runs against a database built in Chrome's own shape, a page that names a
+bundle, and a bundle served from a stand-in. `tests/e2e.sh` does exactly that over
+a real socket and asserts what the stand-in received — the session on the page,
+and no session on the bundle, because a bundle is public.

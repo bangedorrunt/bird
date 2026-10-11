@@ -38,6 +38,19 @@ for v in TWITTER_AUTH_TOKEN TWITTER_CT0 BIRD_JSON BIRD_AUTH_TOKEN BIRD_CT0 BIRD_
 done
 OUT="${BIRD_E2E_OUT:-tests/e2e_artifact.txt}"
 WORK="$(mktemp -d)"
+# The settings cache lives under HOME and the login flow writes its temporary
+# files under TMPDIR, so the program reads both through the interpreter. This
+# machine's HOME has a real settings cache in it the moment anyone runs
+# `bird login`, and a case would then find a live session where it expected none --
+# which is what the "no credentials" case asserts. The suite owns both variables,
+# the same way it owns TERM and the BIRD_ names.
+export HOME="$WORK/home"
+export TMPDIR="$WORK/tmp"
+# `$HOME/.config/bird` is deliberately *not* made here. That directory is where
+# `--settings-path` defaults to, and a first `bird login` on a machine where it has
+# never existed has to make it; pre-creating it would hide exactly the failure a
+# fresh machine sees. The suite's HOME is empty except for what a case creates.
+mkdir -p "$HOME" "$TMPDIR"
 LIVE_PID=""
 # Declared empty so `set -u` is satisfied when the socket block is skipped; the
 # transcript normalizer reads it unconditionally at the end.
@@ -68,6 +81,7 @@ printf 'PNGDATA' > "$WORK/shot.png"
 : > "$WORK/fifth.png"
 : > "$WORK/clip.mp4"
 printf 'plain text' > "$WORK/notes.txt"
+printf 'not json at all' > "$WORK/broken-cache.json"
 
 CREDS="--auth-token T --ct0 C --web-bearer BEARER --gql-features {}"
 
@@ -140,7 +154,7 @@ case_ok() {
   local why=""
   if [ "$status" != "$want" ]; then
     why="exit $status, wanted $want"
-  elif [ -n "$expect" ] && ! grep -Fq "$expect" "$WORK/out"; then
+  elif [ -n "$expect" ] && ! grep -Fq -e "$expect" "$WORK/out"; then
     why="stdout does not contain: $expect"
   fi
   if [ -z "$why" ]; then
@@ -202,7 +216,7 @@ case_ok_not() {
   local why=""
   if [ "$status" != "$want" ]; then
     why="exit $status, wanted $want"
-  elif grep -Fq "$reject" "$WORK/out" || grep -Fq "$reject" "$WORK/err"; then
+  elif grep -Fq -e "$reject" "$WORK/out" || grep -Fq -e "$reject" "$WORK/err"; then
     why="output contains what it must not: $reject"
   fi
   if [ -z "$why" ]; then
@@ -308,6 +322,22 @@ case_ok "a share url still yields its id" 0 '99887766' -- read 'https://x.com/u/
 case_ok "mentions asks X with the count it was given" 0 'mentions.json?count=3' -- mentions --count 3 $CREDS --dry-run --json
 case_ok "...as a GET" 0 '"GET"' -- mentions $CREDS --dry-run --json
 case_ok "mentions without a session is refused" 3 '"id":"auth"' -- mentions --sweetistics-api-key k --json
+
+# ── login: what it refuses before it runs anything ─────────────────────────
+# `login` is the one verb that runs local programs, so its refusals are the whole
+# contract with a caller: a run that cannot work has to say so before it starts
+# asking the keychain for a password or writing a byte.
+case_ok "login with no session says which flags fix it" 2 '--cookie-source' -- login --json
+case_ok "a browser this build cannot read is refused by name" 2 'safari' -- login --cookie-source safari --json
+case_ok "firefox without a database names the flag it needs" 2 '--cookie-db' -- login --cookie-source firefox --json
+# The cache is refused by name rather than ignored, because a setting that does
+# nothing is the one failure a caller cannot see. Its keys are flag names, so a
+# file that is not an object is not a settings file.
+case_ok "a settings cache that is not a settings file is refused by name" 2 'is not usable' -- check --settings-path "$WORK/broken-cache.json" --json
+case_ok "a settings cache that is not there is not an error" 0 '"verb":"check"' -- check --settings-path "$WORK/absent-cache.json" --json
+# `login` writes that cache, so it never reads it: a corrupt one has to be
+# something `bird login` can repair rather than something that stops the repair.
+case_ok "login does not read the cache it is about to rewrite" 2 'safari' -- login --cookie-source safari --settings-path "$WORK/broken-cache.json" --json
 
 # ── a config file holds settings, not the text of one post ──────────────────
 case_ok "a config file refuses the text of a post" 2 'not a setting: --text' --config "$WORK/content.json" -- tweet $CREDS --dry-run --json
@@ -478,6 +508,78 @@ PY
       fail=$((fail + 1))
       cat "$WORK/wirealias" >> "$OUT"
       printf 'FAIL %d. the server received the credential each case asked for\n' "$n" | tee -a "$OUT"
+    fi
+
+    # ── login: the browser's session, the bundle's constants, the cache ─────
+    #
+    # This is the only place the Chrome recipe runs for real: sqlite3 reads a
+    # database built in the shape Chrome writes, openssl derives the key and
+    # decrypts what it holds, the page names a bundle, and the bundle's own bytes
+    # supply the bearer and the operation ids. The cache that comes out is then
+    # handed to a second run with no credentials at all, which is the whole point
+    # of writing it. The stand-in serves the page and the bundle, which is why
+    # `--bundle-base` is a setting rather than a constant in the code.
+    if command -v sqlite3 >/dev/null && command -v openssl >/dev/null; then
+      if openssl kdf -keylen 16 -kdfopt digest:SHA1 -kdfopt pass:p -kdfopt hexsalt:73616c747973616c74 -kdfopt iter:1003 PBKDF2 >/dev/null 2>&1; then
+        # The blobs are encrypted here the way Chrome encrypts them, with the key
+        # derived the way Chrome derives it, so what the program decrypts is real
+        # ciphertext rather than a recording. Each plaintext is 13 bytes because
+        # `-nopad` round-trips exactly at 16, and `v10` is Chrome's own marker.
+        LIVE_KEY=$(openssl kdf -keylen 16 -kdfopt digest:SHA1 -kdfopt pass:test-key -kdfopt hexsalt:73616c747973616c74 -kdfopt iter:1003 PBKDF2 | tr -d ':')
+        printf 'v10SESSION-TOKEN' | openssl enc -aes-128-cbc -e -K "$LIVE_KEY" -iv 20202020202020202020202020202020 -nopad -out "$WORK/at.blob"
+        printf 'v10CSRF-TOKEN-01' | openssl enc -aes-128-cbc -e -K "$LIVE_KEY" -iv 20202020202020202020202020202020 -nopad -out "$WORK/ct0.blob"
+        sqlite3 "$WORK/Cookies" "create table cookies (host_key text, name text, encrypted_value blob); insert into cookies values ('.x.com','auth_token', readfile('$WORK/at.blob')); insert into cookies values ('.x.com','ct0', readfile('$WORK/ct0.blob'));"
+        LOGIN="--cookie-source chrome --cookie-db $WORK/Cookies --chrome-key test-key --web-home http://127.0.0.1:$LIVE_PORT/home --bundle-base http://127.0.0.1:$LIVE_PORT/client-web/ --settings-path $WORK/settings.json"
+        LOGIN_HOME="--cookie-source chrome --cookie-db $WORK/Cookies --chrome-key test-key --web-home http://127.0.0.1:$LIVE_PORT/home --bundle-base http://127.0.0.1:$LIVE_PORT/client-web/"
+        case_ok "login imports the session and reads the bundle for its constants" 0 '"settings_path"' -- login $LOGIN --json
+        # The output must name the verb that ran: a login that reports `help` is
+        # the run's manifest pointing at the wrong operation.
+        case_ok "...and reports the verb it ran" 0 '"verb":"login"' -- login $LOGIN --json
+        case_ok_not "login does not print the cookies it imported" 0 'SESSION-TOKEN' -- login $LOGIN --json
+        # The same run with no `--settings-path`, which lands on the default and is
+        # the only case that exercises making the directory it lives in.
+        case_ok "login writes the default settings path, making its directory" 0 '"settings_path":"' -- login $LOGIN_HOME --json
+        # No credentials on the command line at all, and the request still goes out
+        # as the session the browser held and the bearer the bundle carried.
+        case_ok "a run with no credentials reads the cache login wrote" 0 'bird hello' -- mentions --settings-path "$WORK/settings.json" --mentions-url "http://127.0.0.1:$LIVE_PORT/mentions.json" --json
+        n=$((n + 1))
+        printf '\n## %d. the server received the session the cache held\n' "$n" >> "$OUT"
+        if python3 - "$WORK/live.log" > "$WORK/wirelogin" 2>&1 <<'PY'
+import json, sys
+rows = [json.loads(line) for line in open(sys.argv[1])]
+page = [r for r in rows if r["path"] == "/home"]
+bundle = [r for r in rows if r["path"] == "/client-web/main.livetest.js"]
+mentions = [r for r in rows if r["path"].startswith("/mentions.json")][-1]
+# Every row, not a fixed count: how many times a login is run is the harness's
+# business, and a count here would break on the next case added rather than on a
+# regression. The two facts are that the session reached the page every time and
+# never reached the bundle.
+ok = (len(page) > 0 and len(bundle) > 0
+      and all(r["cookie"] == "auth_token=SESSION-TOKEN; ct0=CSRF-TOKEN-01" for r in page)
+      # A bundle is public, so the session must not travel with it.
+      and all(r["cookie"] is None for r in bundle)
+      and mentions["cookie"] == "auth_token=SESSION-TOKEN; ct0=CSRF-TOKEN-01"
+      and mentions["csrf"] == "CSRF-TOKEN-01"
+      and mentions["authorization"] == "Bearer AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL")
+print("page:    ", len(page), "requests,", page[-1]["method"], page[-1]["path"], page[-1]["cookie"])
+print("bundle:  ", len(bundle), "requests,", bundle[-1]["method"], bundle[-1]["path"], bundle[-1]["cookie"])
+print("mentions:", mentions["method"], mentions["path"], mentions["cookie"], mentions["authorization"])
+sys.exit(0 if ok else 1)
+PY
+        then
+          pass=$((pass + 1))
+          cat "$WORK/wirelogin" >> "$OUT"
+          printf 'ok   %d. the server received the session the cache held\n' "$n" | tee -a "$OUT"
+        else
+          fail=$((fail + 1))
+          cat "$WORK/wirelogin" >> "$OUT"
+          printf 'FAIL %d. the server received the session the cache held\n' "$n" | tee -a "$OUT"
+        fi
+      else
+        case_skip "login over a real socket" "this openssl has no kdf command, which the Chrome recipe needs"
+      fi
+    else
+      case_skip "login over a real socket" "needs sqlite3 and openssl"
     fi
   fi
 fi

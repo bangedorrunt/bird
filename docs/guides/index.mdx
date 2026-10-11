@@ -1,6 +1,6 @@
 ---
 title: bird guides
-description: Task-shaped guides for posting, replying, uploading media, reading tweets and reading mentions with bird, plus the contract an agent sees.
+description: Task-shaped guides for logging in, posting, replying, uploading media, reading tweets and reading mentions with bird, plus the contract an agent sees.
 ---
 
 # bird guides
@@ -26,6 +26,7 @@ bend src/effects.bend -- tweet --text "hello" --dry-run --json
 | guide | what it covers |
 | --- | --- |
 | [Setup](./setup.mdx) | Credentials, engines, the config file, environment variables, precedence, and `check`. |
+| [Login](./login.mdx) | `login`: reading a session out of Chrome or Firefox, and the rotating settings out of X's own bundle, into one cache. |
 | [Writing](./writing.mdx) | `tweet` and `reply`: text, `--text-file`, empty writes, and `--dry-run`. |
 | [Media](./media.mdx) | `--media` and `--alt`: the rules, the multi-request flow, and what the dry run shows. |
 | [Reading](./reading.mdx) | `read`, `replies`, `thread` and `search`, and how a tweet id is read out of a url. |

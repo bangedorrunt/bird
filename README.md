@@ -15,23 +15,26 @@ The whole program is written: the pure core is proved and tested, and the thin
 interpreter at the edge is covered end to end by `tests/e2e.sh`, which runs the
 program the way a caller does and keeps the transcript.
 
-Task-shaped documentation lives in `docs/guides/`: setup and credentials,
+Task-shaped documentation lives in `docs/guides/`: setup and credentials, login,
 writing, media, reading, mentions, and the contract an agent sees.
 
 | | |
 |---|---|
 | `src/json.bend` | JSON: a lossless encoder, a stack-machine decoder, a pretty printer. No JSON in Base, so this exists. |
 | `src/domain.bend` | The vocabulary: verbs, credentials, items, errors, requests, the model and the step. Pure data, no behaviour. |
+| `src/scan.bend` | Text walking: finding a needle in a large document and reading the tokens around it. Exists because X's client bundle is over a megabyte. |
 | `src/policy.bend` | Every decision that is not a side effect: which engine, which credentials, which settings win, what a tweet id is, which media a post may carry. |
 | `src/argv.bend` | The command line into items: flag and verb tables, `--help` text, machine-readable schema. |
+| `src/cookies.bend` | The session out of a browser's own cookie store: the `sqlite3`/`security`/`openssl` calls Chrome's recipe needs, and the reading of what they answer. |
+| `src/bundle.bend` | X's client bundle into the rotating settings: the script's url, the bearer, and one operation id per operation, each refused by name when it is absent. |
 | `src/http.bend` | The transport *described*: one request to one curl argv — literal body or multipart form — curl's answer back into a status and a body, failures into error codes. |
 | `src/api.bend` | The requests each verb sends: one constructor per verb, the media upload queue, the headers each credential shape carries, the variables, the operation ids and the hosts. |
 | `src/update.bend` | The fold: a run is a state machine over messages, and `Update.step` is the whole of it. Config file, text file, fixture and answer, in rounds. |
 | `src/view.bend` | What the run prints, as data: the agent envelope and the terminal rendering, chosen by the mode the settings resolved. |
 | `src/effects.bend` | The interpreter, and the only place IO happens: argv, environment, file reads, `curl`, printing, and `main`. |
 | `LAWS.bend` / `PROOF.bend` | Nine laws and their proofs. |
-| `tests/*_test.bend` | Five runnable programs, 249 cases, each dying with a nonzero exit on the first failure. |
-| `tests/e2e.sh` | The real command line, 70 cases, writing `tests/e2e_artifact.txt`. |
+| `tests/*_test.bend` | Seven runnable programs, 395 cases, each dying with a nonzero exit on the first failure. |
+| `tests/e2e.sh` | The real command line, 82 cases, writing `tests/e2e_artifact.txt`. |
 | `tests/live_server.py` | A stand-in backend so the transport can be exercised over a real socket without reaching X: the four operations, the media service and the mentions timeline. |
 | `CHANGELOG.md` | Release notes, [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) format. `bird version` prints the version the log's newest entry names. |
 
@@ -46,20 +49,53 @@ bend src/effects.bend -o bird                # compile it (needs clang)
 install -m 0755 bird ~/.local/bin/bird       # then: bird read 12345 --json
 ```
 
+`./install.sh` is those last two lines, plus a `PREFIX=` to choose where it lands
+(default `~/.local/bin`) and a check that what was installed answers
+`bird version`. It needs `bend` — on PATH, or at `~/.bend/bin/bend` — and clang.
+
 `bird` reads its settings from flags, the environment or a `BIRD_CONFIG` file;
 `bird help` prints the manual and `bird schema --json` the whole contract.
+
+## Log in
+
+Every verb reads a credential; `login` is the one that obtains one. It reads the
+session out of a browser you are already signed into and the values X rotates —
+the web bearer and the four operation ids — out of X's own client bundle, and
+writes both into one settings cache:
+
+```sh
+bird login --cookie-source chrome
+bird mentions --count 20 --json     # reads the cache; no credential flags
+```
+
+Firefox is one `sqlite3` read because its values are plain text; Chrome's are
+encrypted, and the run derives the key from the login keychain with `openssl`,
+decrypts the two cookies, and takes the blobs away again. `--chrome-key` supplies
+that key directly, which is what makes the recipe testable without a keychain and
+usable on a machine that keeps its key elsewhere. A keychain that answers nothing
+is an auth failure naming `--chrome-key`, never a cache written with a
+wrongly-decrypted value in it.
+
+The cache is a JSON object whose keys are flag names and is written `0600`;
+`login` never reads it, so a corrupt one is something `login` repairs rather than
+something that stops the repair. With no source, `login` refreshes the rotating
+settings for the session it already has. It is also the one verb that runs local
+programs, so all four of its refusals happen before the keychain is asked or a
+byte is written.
 
 ## Verify it
 
 ```sh
 bend PROOF.bend            # ALL PROOFS CHECK, or SOME PROOFS FAIL
 bend src/effects.bend --check-only
-bash tests/e2e.sh          # 70 cases against the real command line
+bash tests/e2e.sh            # 82 cases against the real command line
 bend tests/json_test.bend    # 25 cases
 bend tests/argv_test.bend    # 46 cases
 bend tests/http_test.bend    # 29 cases
 bend tests/api_test.bend     # 48 cases
-bend tests/update_test.bend  # 101 cases
+bend tests/scan_test.bend    # 31 cases
+bend tests/bundle_test.bend  # 37 cases
+bend tests/update_test.bend  # 179 cases
 ```
 
 `bend LAWS.bend` on its own prints the open claims (one TODO per law); that is
@@ -246,6 +282,11 @@ found one more thing no offline test could:
   runs its whole queue (upload, alt text, `CreateTweet` carrying the ids) over a
   real socket, and the server's log is asserted. Their variables are the ones X's
   client sends for `CreateTweet`, but no post has been made from the real account.
+- **`login` against a real browser profile.** The Chrome recipe is exercised for
+  real — a database built in Chrome's own shape, ciphertext encrypted the way
+  Chrome encrypts it, a real `openssl` derivation and decryption, and the session
+  the stand-in received asserted afterwards — but the key comes from `--chrome-key`
+  rather than a live keychain, and no run has yet opened a real profile.
 - **Video chunking.** A video is a one-shot upload with
   `media_category=tweet_video`. A file large enough for X to insist on `INIT`/
   `APPEND`/`FINALIZE` comes back as X's own refusal rather than a silent

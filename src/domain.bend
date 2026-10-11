@@ -264,6 +264,11 @@ type Verb is Data:
   VerbMentions{count: U32}
   VerbWhoami{}
   VerbCheck{}
+  # `login` reads the session cookies out of a browser profile and the rotating
+  # settings out of X's own client bundle, then writes both to the settings cache
+  # so a later run needs no flags. It is not a write on X and not a login flow:
+  # nothing is posted and no credential is obtained from X.
+  VerbLogin{}
 
 def Verb.name(v: Verb) -> String:
   match v:
@@ -291,6 +296,8 @@ def Verb.name(v: Verb) -> String:
       "whoami"
     case VerbCheck{}:
       "check"
+    case VerbLogin{}:
+      "login"
 
 # Whether the verb changes something on X. Only these need an idempotency story
 # and a dry run an operator can inspect before it counts.
@@ -467,6 +474,33 @@ def mk_cfg(
 ) -> RunCfg:
   RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}
 
+# ── what `login` needs ──────────────────────────────────────────────────
+#
+# Its own settings, gathered before anything runs. `dir` is not here because it
+# is `--tmpdir` plus nothing: the login flow builds the two file paths from it, so
+# only the directory is carried.
+type LoginCfg is Data:
+  LoginCfg{
+    source: String,
+    db: String,
+    chrome_key: String,
+    web_home: String,
+    bundle_base: String,
+    settings_path: String,
+    tmp_dir: String,
+  }
+
+def mk_login_cfg(
+  source: String,
+  db: String,
+  chrome_key: String,
+  web_home: String,
+  bundle_base: String,
+  settings_path: String,
+  tmp_dir: String
+) -> LoginCfg:
+  LoginCfg{source, db, chrome_key, web_home, bundle_base, settings_path, tmp_dir}
+
 # A description of a side effect. `id` correlates an outcome back to its request
 # so independent commands could run at once without losing the thread.
 type Cmd is Data:
@@ -479,6 +513,21 @@ type Cmd is Data:
     why: String,
   }
   CmdHttp{id: U32, req: HttpReq}
+  # Any program, with an argv list and no shell. `CmdHttp` is this with curl in
+  # front, and the login flow needs the same shape for the three local tools it
+  # runs: `sqlite3` to read a browser's cookie store, `security` for the Chrome
+  # key, and `openssl` to derive it and decrypt with it. The answer comes back as
+  # `MsgProc`, text only, which is why the Chrome ciphertext is written to a file
+  # by `sqlite3` rather than carried here.
+  CmdExec{id: U32, program: String, args: List<&2, String>}
+  # A file this program writes, which is one thing in the whole design: the
+  # settings cache. It carries the text rather than a handle because nothing else
+  # in the fold can hold one.
+  CmdWriteFile{
+    id: U32,
+    path: String,
+    text: String,
+  }
   CmdExit{
     code: U32,
     message: String,
@@ -552,6 +601,23 @@ type Msg is Data:
     body: String,
     stderr: String,
   }
+  # A local program answered. `status` is its exit status and `out`/`err` are what
+  # it wrote, which is all any of the three tools the login flow runs needs.
+  MsgProc{
+    id: U32,
+    status: U32,
+    out: String,
+    err: String,
+  }
+  # The settings cache was written, or the writing failed and said why. A cache
+  # that could not be written is a failed login: the run would otherwise report
+  # settings it did not keep.
+  MsgWrote{
+    id: U32,
+    path: String,
+    ok: Bool,
+    message: String,
+  }
 
 # The verb of a resolved run, replaced once the settings are all in hand: the
 # text of a write may come from a file, which is not known until the file has
@@ -560,6 +626,85 @@ def RunCfg.with_verb(cfg: RunCfg, verb: Verb) -> RunCfg:
   match cfg:
     case RunCfg{verb_old, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}:
       RunCfg{verb, out, dry_run, engine, creds, op_create_tweet, op_tweet_detail, op_search, op_viewer, web_bearer, gql_features, api_base, timeout_ms, media_upload_base, gql_base, mentions_url}
+
+# ── the login flow ──────────────────────────────────────────────────────
+#
+# `login` is a queue of local programs and two requests, folded the way a media
+# write is. The step says which one is open; the loot is what the steps before it
+# learned and the ones after it need, so nothing is read twice and no step has to
+# be told which cookie it is holding.
+#
+# The order is the only order that works: the cookies are read first because the
+# page that names the bundle answers the signed-in client, the key is derived next
+# because decrypting needs it, and the cache is written last because it holds
+# everything the run gathered.
+type LoginStep is Data:
+  LoginCookies{}
+  LoginKey{}
+  LoginDerive{}
+  LoginDecrypt{}
+  LoginDecrypt2{}
+  LoginClean{}
+  LoginPage{}
+  LoginBundle{}
+  LoginWrite{}
+  LoginLock{}
+  LoginDone{}
+
+# `cache` is the settings text as it will be written, built once when the bundle
+# answered: the steps after that hold the whole of what the run gathered, and the
+# report at the end is read back out of it rather than out of a second copy.
+type Loot is Data:
+  Loot{
+    dir: String,
+    url: String,
+    password: String,
+    key: String,
+    at: String,
+    ct0: String,
+    cache: String,
+  }
+
+def mk_loot(
+  dir: String,
+  url: String,
+  password: String,
+  key: String,
+  at: String,
+  ct0: String,
+  cache: String
+) -> Loot:
+  Loot{dir, url, password, key, at, ct0, cache}
+
+def Loot.with_password(l: Loot, password: String) -> Loot:
+  match l:
+    case Loot{dir, url, password_old, key, at, ct0, cache}:
+      mk_loot(dir, url, password, key, at, ct0, cache)
+
+def Loot.with_key(l: Loot, key: String) -> Loot:
+  match l:
+    case Loot{dir, url, password, key_old, at, ct0, cache}:
+      mk_loot(dir, url, password, key, at, ct0, cache)
+
+def Loot.with_at(l: Loot, at: String) -> Loot:
+  match l:
+    case Loot{dir, url, password, key, at_old, ct0, cache}:
+      mk_loot(dir, url, password, key, at, ct0, cache)
+
+def Loot.with_ct0(l: Loot, ct0: String) -> Loot:
+  match l:
+    case Loot{dir, url, password, key, at, ct0_old, cache}:
+      mk_loot(dir, url, password, key, at, ct0, cache)
+
+def Loot.with_url(l: Loot, url: String) -> Loot:
+  match l:
+    case Loot{dir, url_old, password, key, at, ct0, cache}:
+      mk_loot(dir, url, password, key, at, ct0, cache)
+
+def Loot.with_cache(l: Loot, cache: String) -> Loot:
+  match l:
+    case Loot{dir, url, password, key, at, ct0, cache_old}:
+      mk_loot(dir, url, password, key, at, ct0, cache)
 
 # Where the run is. `PhaseInit` is the entry state, `PhaseGather` waits for the
 # settings the run reads for itself, `PhaseRequest` waits for the answer, and
@@ -573,6 +718,10 @@ type Phase is Data:
   # its head is the one in flight, and `done` collects the media ids the uploads
   # named, which the final create request needs.
   PhaseMedia{jobs: List<&2, MediaJob>, done: List<&2, String>}
+  # The login flow, which is a queue like a media write: one step is open, and
+  # the step says which command answers it. `loot` is what the steps before it
+  # learned and the ones after it need, so no step has to re-read anything.
+  PhaseLogin{step: LoginStep, loot: Loot}
   PhaseDone{}
   PhaseFailed{error: Error}
 

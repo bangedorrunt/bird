@@ -440,6 +440,65 @@ credentials, cannot produce 404/429/500 on demand).
 (today's tweets) — all 200, with all of the above in force. The repeatable
 artifact remains the stand-in; credentials never enter the repo.
 
+### 13. `login` obtains a credential; the fold still only reads settings
+
+**Decision.** `bird login` is one verb that does three things in one folded run:
+reads the session cookies out of a browser's own store, reads the rotating
+settings (the web bearer, the four operation ids) out of X's own client bundle,
+and writes both into one settings cache whose keys are flag names. It is also the
+only verb that runs programs of its own — `sqlite3`, `security`, `openssl`,
+`rm`, `chmod` — so it is the only verb whose refusals matter more than its work:
+violating one of them would mean asking a keychain for a password or writing a
+byte before learning the run cannot work. The four refusals (an unknown browser,
+a named source with no database, no session at all, no settings path) all happen
+at `login_start`, before anything runs.
+
+The flow is a state machine in the fold, not a script in the interpreter:
+`PhaseLogin{step, loot}` where `step` names the one command that is open and
+`loot` carries what the answers so far collected. `src/cookies.bend` owns the
+*shape* of the browser calls and the reading of their answers, which is pure and
+is why the whole recipe is testable without a browser. One request id covers the
+whole flow, exactly as the media queue does.
+
+The cache is the one thing this writes to disk, and it is the session, so it is
+`chmod 600`. `login` deliberately does **not** read it: a cache that has been
+corrupted has to be something `login` can repair rather than something that stops
+the repair from running. Every other verb reads it in the same first round as the
+config file, and the config file is prepended when the cache lands, so a written
+setting always beats a cached one.
+
+**Why.** The rotating values are the reason the feature exists. They are
+recoverable from X's bundle by hand, and doing that by hand is a script that rots;
+the two cookies and the four ids arriving from two unrelated places is exactly the
+kind of setup a program should own. Chrome's encryption is a fixed, published
+recipe (PBKDF2-HMAC-SHA1 over the keychain password, salt `saltysalt`, 1003
+rounds, AES-128-CBC with a fixed IV, `v10` prefix) so it is implemented rather
+than documented as a limitation — but the *outcome* of the decryption is checked,
+because a wrong key answers uniform bytes rather than an error, and a cache
+written from those bytes would be a token-shaped lie.
+
+The cache's directory is made first (`mkdir -p`, the way the login flow runs every
+other program), because the default path is three levels deep and `File.open` on a
+directory nobody has made fails with the OS naming the file rather than the missing
+directory -- which is what a first `bird login` on a fresh machine hits.
+
+**Ruled out.** Bundling a crypto or SQLite implementation (the language has
+neither, and three calls to tools that already exist are smaller than either); a
+keychain of `bird`'s own (nothing to steal, nothing to migrate); guessing a
+Firefox profile path (reading the wrong profile's session is worse than making
+someone name one); reading the cache `login` is about to rewrite; and printing
+the cookies in the report (a token in a terminal is a token in a scrollback — the
+report names the path and the values it found, never the session).
+
+**Proved by.** `tests/scan_test.bend` and `tests/bundle_test.bend` (the walks,
+and the bundle's bearer and ids, each absent one refused by name),
+`tests/update_test.bend` (the whole flow through the fold: the sqlite3 query, the
+keychain, the derivation, both decryptions, the page, the bundle, the write, the
+lock, plus each refusal and every way the key can be wrong), and section 12's live
+case, which runs the real Chrome recipe — a database in Chrome's own shape, real
+ciphertext, a real `openssl` — against a stand-in and asserts what the server
+received.
+
 ## Consequences
 
 * **Good:** there is exactly one place where IO can be wrong, and the pure core
@@ -455,6 +514,10 @@ artifact remains the stand-in; credentials never enter the repo.
   lean on them.
 * **Bad:** the tty is a `TERM` proxy, not `isatty`, so a pipe typed at a
   terminal is misread as human output unless `--json`/`BIRD_JSON` is passed.
+* **Bad:** the settings cache holds the session in plain text, `0600`. Anything
+  that can read the file can post as you until the session is revoked; the
+  alternative (a keychain of `bird`'s own) was ruled out in section 13, so the
+  honest mitigation is the file mode and the short-lived nature of the cookie.
 * **Bad:** an unnamed 4xx maps to `upstream`, and `upstream` is retryable; a
   request X has permanently refused could be retried unchanged. Accepted for now
   (no observed harm; the named statuses cover the real cases), and the first
@@ -478,8 +541,11 @@ artifact remains the stand-in; credentials never enter the repo.
 
 - Not a general HTTP client, not a scraper, not a library: one binary, one
   command line, and requests whose shapes are settings.
-- No OAuth and no login flow. The program reads a credential; it does not obtain
-  one, and it never writes one to disk.
+- No OAuth, no device-code flow, no account password. `login` imports a session
+  from a browser you are already signed into; it never asks for your X password,
+  and the one secret it handles is Chrome's own key, which it derives a decryption
+  key from and discards. What it writes to disk is that imported session, in a
+  `0600` cache, because a cache is the point of the verb.
 - No second machine-readable output shape, no color, no pager, no streaming.
 - No CI service, no test matrix. The gates are local: `bend PROOF.bend` and
   `bash tests/e2e.sh`.
@@ -488,9 +554,9 @@ artifact remains the stand-in; credentials never enter the repo.
 
 ## Implementation Plan
 
-* **Affected paths**: `src/` (the nine modules, each header comment carries the
-  rules it leans on), `tests/` (five offline suites, `e2e.sh`,
-  `live_server.py`), `docs/decisions/0001-design-bird.md` (this file),
+* **Affected paths**: `src/` (the twelve modules, each header comment carries the
+  rules it leans on), `tests/` (seven offline suites, `e2e.sh`,
+  `live_server.py`), `install.sh` (compile and put it on PATH), `docs/decisions/0001-design-bird.md` (this file),
   `docs/guides/*.mdx` (the task-shaped guides), `docs/learnings/`, `AGENTS.md`,
   `README.md`, `CHANGELOG.md` (release notes; `bird version` prints the version
   the newest entry names).
@@ -513,22 +579,25 @@ artifact remains the stand-in; credentials never enter the repo.
   `BIRD_SWEETISTICS_API_KEY`, `BIRD_SWEETISTICS_BASE_URL`, `BIRD_WEB_BEARER`,
   `BIRD_GQL_FEATURES`, `BIRD_OP_VIEWER`, `BIRD_OP_TWEET_DETAIL`,
   `BIRD_OP_SEARCH`, `BIRD_OP_CREATE_TWEET`, `BIRD_MEDIA_UPLOAD_BASE`,
-  `BIRD_GQL_BASE`, `BIRD_MENTIONS_URL`.
+  `BIRD_GQL_BASE`, `BIRD_MENTIONS_URL`, `BIRD_COOKIE_SOURCE`, `BIRD_COOKIE_DB`,
+  `BIRD_CHROME_KEY`, `BIRD_WEB_HOME`, `BIRD_BUNDLE_BASE`, `BIRD_SETTINGS_PATH`
+  (the login settings; `HOME` and `TMPDIR` reach the resolver as `--home` and
+  `--tmpdir` from the interpreter, not as `BIRD_` names anyone writes).
 
 ### Verification
 
 - [x] `bend src/effects.bend --check-only` — the program and its imports
   type-check under every rule in section 3.
 - [x] `bend PROOF.bend` — prints `ALL PROOFS CHECK` (section 2).
-- [x] Offline suites, 249 cases, 0 failures (`json` 25, `argv` 46, `http` 29,
-  `api` 48, `update` 101): `bend tests/argv_test.bend`, `tests/api_test.bend`,
-  `tests/http_test.bend`, `tests/json_test.bend`, `tests/update_test.bend`.
-  Covers sections 4–11.
-- [x] `bash tests/e2e.sh` — 70 cases, 70 ok, 0 failed, 0 skipped: command line,
+- [x] Offline suites, 395 cases, 0 failures (`json` 25, `argv` 46, `http` 29,
+  `api` 48, `scan` 31, `bundle` 37, `update` 179):
+  `bend tests/{json,argv,http,api,scan,bundle,update}_test.bend`.
+  Covers sections 4–11 and 13.
+- [x] `bash tests/e2e.sh` — 82 cases, 82 ok, 0 failed, 0 skipped: command line,
   envelope, exit codes, `retryable`, dry runs, wire-log assertions, the media
-  write (upload → alt → post) and the mentions read against the stand-in, the
-  300 KB body, the pty case, the schema's defaults, and the guides' flags
-  (sections 4, 6, 8, 9, 10, 11, 12).
+  write (upload → alt → post), the mentions read and the login flow against the
+  stand-in, the 300 KB body, the pty case, the schema's defaults, and the guides'
+  flags (sections 4, 6, 8, 9, 10, 11, 12, 13).
 - [x] Live against X by hand once: `whoami`, `read 20`, `thread 20`,
   `replies 20`, `search rust --count 5` — all HTTP 200 with real payloads
   (sections 6, 7). The repeatable artifact remains the stand-in server.
@@ -544,8 +613,11 @@ artifact remains the stand-in; credentials never enter the repo.
 
 ## More Information
 
-- Revisit triggers: X rotates the bearer/query ids (settings absorb it, no code
-  change); an agent reports retry churn on an unnamed 4xx (see Consequences);
+- Revisit triggers: X rotates the bearer/query ids (`bird login` re-reads them,
+  no code change); Chrome changes its cookie recipe or the keychain entry name
+  (section 13, one module); a Firefox profile path becomes guessable (the
+  `--cookie-db` refusal could relax); an agent reports retry churn on an unnamed
+  4xx (see Consequences);
   Bend gains `isatty` (replace the `TERM` proxy); a video needs chunked upload
   (add `INIT`/`APPEND`/`FINALIZE` jobs to the queue, which is built for it);
   `--fixture` needs to answer a multi-request write (it would have to answer the

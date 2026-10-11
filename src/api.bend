@@ -584,10 +584,25 @@ def Api.request_json(+req: D.HttpReq) -> J.Json:
 def Api.describe_other(+text: String, why: String) -> J.Json:
   J.obj_of(J.pairs2(J.pair("cmd", J.of_str(text)), J.pair("why", J.of_str(why))))
 
+# A local program is described by its name and how many arguments it was handed,
+# never by the arguments themselves: the login flow's `openssl` carries the derived
+# key in its own command line, and a description that printed it would put a secret
+# in a terminal's scrollback.
+def Api.describe_exec(+program: String, +args: List<&2, String>) -> J.Json:
+  J.obj_of(J.pairs3(
+    J.pair("cmd", J.of_str("exec")),
+    J.pair("program", J.of_str(program)),
+    J.pair("args", J.of_u32(U32.from_nat(List.length(&2, String, args))))
+  ))
+
 def Api.describe(+cmd: D.Cmd) -> J.Json:
   match cmd:
     case D.CmdHttp{id, req}:
       Api.request_json(req)
+    case D.CmdExec{id, program, args}:
+      Api.describe_exec(program, args)
+    case D.CmdWriteFile{id, path, text}:
+      Api.describe_other("write_file", path)
     case D.CmdReadFile{id, path, why}:
       Api.describe_other("read_file", path)
     case D.CmdPrint{text}:
