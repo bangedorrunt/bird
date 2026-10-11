@@ -97,7 +97,7 @@ def Laws.verb_word_reaches_verb(v):
       {==}
     case D.VerbMentions{count}:
       {==}
-    case D.VerbBookmarks{count}:
+    case D.VerbBookmarks{count, cursor}:
       {==}
     case D.VerbWhoami{}:
       {==}
@@ -151,7 +151,7 @@ def Laws.writes_are_network(v):
       {==}
     case D.VerbMentions{count}:
       {==}
-    case D.VerbBookmarks{count}:
+    case D.VerbBookmarks{count, cursor}:
       {==}
     case D.VerbWhoami{}:
       {==}
