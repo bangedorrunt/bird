@@ -137,7 +137,8 @@ def Tweets.field_from(+from_legacy: Bool, +t: J.Json, +key: String) -> J.Json:
       J.get_or_null(t, key)
 
 def Tweets.field(+t: J.Json, +key: String) -> J.Json:
-  Tweets.field_from(J.present(Tweets.meta(t), key), t, key)
+  +m : J.Json = Tweets.meta(t)
+  Tweets.field_from(J.present(m, key), t, key)
 
 # A key X did not send, or sent as null, is JSON `null` rather than an empty
 # string: "this response did not say" and "it said nothing" are different answers.
@@ -149,8 +150,9 @@ def Tweets.text_json(+sent: Bool, +value: String) -> J.Json:
       J.null()
 
 def Tweets.field_text(+t: J.Json, +key: String) -> J.Json:
-  +value : String = J.text(Tweets.field(t, key))
-  Tweets.text_json(Bool.not(J.is_null(Tweets.field(t, key))), value)
+  +fv : J.Json = Tweets.field(t, key)
+  +value : String = J.text(fv)
+  Tweets.text_json(Bool.not(J.is_null(fv)), value)
 
 def Tweets.count_json(+sent: Bool, +value: J.Json) -> J.Json:
   match sent:
@@ -312,7 +314,8 @@ def Tweets.listed_user_on(+anonymous: Bool, +t: J.Json, +root: J.Json) -> J.Json
       Tweets.dig3(root, "globalObjects", "users", Tweets.user_id_ref(t))
 
 def Tweets.listed_user(+t: J.Json, +root: J.Json) -> J.Json:
-  Tweets.listed_user_on(String.is_empty(Tweets.user_id_ref(t)), t, root)
+  +uid : String = Tweets.user_id_ref(t)
+  Tweets.listed_user_on(String.is_empty(uid), t, root)
 
 def Tweets.user_on(+found: Bool, +t: J.Json, +root: J.Json) -> J.Json:
   match found:
@@ -357,7 +360,8 @@ def Tweets.author_fields(+u: J.Json) -> List<&2, J.JField>:
     J.pair("handle", J.of_str(Tweets.user_field(u, "screen_name"))) <> (
       J.pair("name", J.of_str(Tweets.user_field(u, "name"))) <> (
         J.pair("verified", J.of_bool(Tweets.verified_of(u))) <> (
-          J.pair("avatar", Tweets.text_json(Bool.not(String.is_empty(Tweets.avatar_of(u))), Tweets.avatar_of(u))) <> Nil{}
+          +avatar : String = Tweets.avatar_of(u)
+        J.pair("avatar", Tweets.text_json(Bool.not(String.is_empty(avatar)), avatar)) <> Nil{}
         )
       )
     )
@@ -495,9 +499,10 @@ def Tweets.quoted(+t: J.Json, +root: J.Json) -> J.Json:
   Tweets.quoted_on(Tweets.is_node(Tweets.quoted_node(t)), t, root)
 
 def Tweets.extra_fields(+t: J.Json, +root: J.Json) -> List<&2, J.JField>:
+  +art : String = Tweets.article_title_of(t)
   J.pair("quoted", Tweets.quoted(t, root)) <> (
     J.pair("in_reply_to", Tweets.field_text(t, "in_reply_to_status_id_str")) <> (
-      J.pair("article_title", Tweets.text_json(Bool.not(String.is_empty(Tweets.article_title_of(t))), Tweets.article_title_of(t))) <> Nil{}
+      J.pair("article_title", Tweets.text_json(Bool.not(String.is_empty(art)), art)) <> Nil{}
     )
   )
 
@@ -631,7 +636,8 @@ def Tweets.profile_fields(+u: J.Json) -> List<&2, J.JField>:
         J.pair("following", Tweets.dig1(Tweets.dig1(u, "relationship_counts"), "following")) <> (
           J.pair("tweets", Tweets.dig1(Tweets.dig1(u, "tweet_counts"), "tweets")) <> (
             J.pair("location", Tweets.text_json(Bool.not(String.is_empty(Tweets.place_of(u))), Tweets.place_of(u))) <> (
-              J.pair("created_at", Tweets.text_json(Bool.not(String.is_empty(Tweets.user_field(u, "created_at"))), Tweets.user_field(u, "created_at"))) <> Nil{}
+              +created : String = Tweets.user_field(u, "created_at")
+              J.pair("created_at", Tweets.text_json(Bool.not(String.is_empty(created)), created)) <> Nil{}
             )
           )
         )
