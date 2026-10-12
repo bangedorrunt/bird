@@ -128,33 +128,48 @@ BODIES = {
 }
 
 
-# The two pages the paged route answers with, in order: page one carries the cursor
-# whose token page two is asked for, and page two has no cursor because that is the
-# end of the timeline.
-def paged_page(n: int) -> str:
-    if n == 0:
-        return ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":['
-                '{"entryId":"tweet-6061","content":{"itemContent":{"tweet_results":{"result":'
-                '{"rest_id":"6061","legacy":{"full_text":"the first saved","id_str":"6061"}}}}}},'
-                '{"entryId":"tweet-6062","content":{"itemContent":{"tweet_results":{"result":'
-                '{"rest_id":"6062","legacy":{"full_text":"the second saved","id_str":"6062"}}}}}},'
-                '{"entryId":"cursor-bottom-1","content":{"entryType":"TimelineTimelineCursor",'
-                '"cursorType":"Bottom","value":"LIVECURSOR1"}}]}]}}}}}')
-    return ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":['
-            '{"entryId":"tweet-6063","content":{"itemContent":{"tweet_results":{"result":'
-            '{"rest_id":"6063","legacy":{"full_text":"the third saved","id_str":"6063"}}}}}}]}]}}}}}')
+# The paged route answers as a function of the REQUEST, not of how many times it has
+# been asked. Page one carries the cursor whose token page two is asked for; page two
+# has no cursor because that is the end of the timeline; a token this route never
+# handed out is an empty timeline rather than a page.
+#
+# A counter would have been shorter and weaker: it would answer page two to a run
+# that had dropped the cursor, which is the one bug this route exists to catch, and it
+# would make a second case on this route depend on the first one's position. Read the
+# cursor, and a request that never sent one can only ever see page one.
+PAGED_PAGE_ONE = ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":['
+                  '{"entryId":"tweet-6061","content":{"itemContent":{"tweet_results":{"result":'
+                  '{"rest_id":"6061","legacy":{"full_text":"the first saved","id_str":"6061"}}}}}},'
+                  '{"entryId":"tweet-6062","content":{"itemContent":{"tweet_results":{"result":'
+                  '{"rest_id":"6062","legacy":{"full_text":"the second saved","id_str":"6062"}}}}}},'
+                  '{"entryId":"cursor-bottom-1","content":{"entryType":"TimelineTimelineCursor",'
+                  '"cursorType":"Bottom","value":"LIVECURSOR1"}}]}]}}}}}')
+
+PAGED_PAGE_TWO = ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[{"entries":['
+                  '{"entryId":"tweet-6063","content":{"itemContent":{"tweet_results":{"result":'
+                  '{"rest_id":"6063","legacy":{"full_text":"the third saved","id_str":"6063"}}}}}}]}]}}}}}')
+
+PAGED_PAGE_NONE = ('{"data":{"data":{"bookmark_timeline_v2":{"timeline":{"instructions":[]}}}}}')
 
 
-# How many times each route has been asked, so the paged one can answer the second
-# request with the page the cursor names. Process-wide and per route: one case in
-# `tests/e2e.sh` reads two pages, and nothing else reads this route at all.
-PAGED_SEEN = {}
+def paged_cursor(body: str) -> str:
+    """The cursor the request asked with, or empty for a first page or a bad body."""
+    try:
+        asked = json.loads(body or "{}")
+    except ValueError:
+        return ""
+    if not isinstance(asked, dict):
+        return ""
+    return asked.get("cursor") or ""
 
 
-def paged_route_n(route: str) -> int:
-    n = PAGED_SEEN.get(route, 0)
-    PAGED_SEEN[route] = n + 1
-    return n
+def paged_answer(body: str) -> str:
+    cursor = paged_cursor(body)
+    if not cursor:
+        return PAGED_PAGE_ONE
+    if cursor == "LIVECURSOR1":
+        return PAGED_PAGE_TWO
+    return PAGED_PAGE_NONE
 
 
 BUNDLE_PATH = "/client-web/main.livetest.js"
@@ -190,7 +205,7 @@ class Handler(BaseHTTPRequestHandler):
         self.record(body, length)
         route = route_of(self.path)
         if route == "/bookmarks-paged":
-            self.answer(200, "application/json", paged_page(paged_route_n(route)))
+            self.answer(200, "application/json", paged_answer(body))
         else:
             status, ctype, text = BODIES.get(route, (404, "application/json",
                                                      '{"errors":[{"message":"no such route"}]}'))

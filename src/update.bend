@@ -407,15 +407,25 @@ def Update.carried(+m: D.Model) -> List<&2, J.Json>:
   Update.carried_on(Bool.not(String.is_empty(Update.verb_cursor(Update.verb_of(m)))), m)
 
 # `count` is a total for this verb, so the walk ends on the first page that meets
-# it. A page with nothing in it and a live cursor would be asked for forever, so an
-# empty page ends it as surely as a missing token does -- and every page that does
-# continue carries at least one tweet, which is what bounds the walk by `count`
-# pages rather than by a page limit of its own.
+# it. Each of the other three ways out names a fact about the page just read: it
+# carried nothing, X offered no token, or the token it offered is the one it was just
+# asked with. That last one cannot advance -- following it would re-read this page
+# until the ask was met, filling the answer with the same tweets -- so it ends the
+# walk the way a missing token does.
+#
+# Every page that does continue carries at least one tweet, which is what bounds the
+# walk by `count` pages rather than by a page limit of its own.
 def Update.asked_more(got: U32, count: U32) -> Bool:
   U32.is_lt(got, count)
 
-def Update.page_more(more: Bool, +next: String, had: U32) -> Bool:
-  Bool.and(more, Bool.and(Bool.not(String.is_empty(next)), U32.is_gt(had, 0)))
+def Update.page_more(more: Bool, +next: String, +sent: String, had: U32) -> Bool:
+  Bool.and(
+    more,
+    Bool.and(
+      Bool.not(String.is_empty(next)),
+      Bool.and(U32.is_gt(had, 0), Bool.not(String.eq(next, sent)))
+    )
+  )
 
 # X having fewer bookmarks than were asked for is a fact the caller needs: a stream
 # that ended and a stream that was cut off look identical in the payload otherwise.
@@ -483,8 +493,11 @@ def Update.bookmarks_page(+m: D.Model, http_status: U32, +root: J.Json, +body: S
   +count : U32 = Update.verb_count(Update.verb_of(m))
   +all : List<&2, J.Json> = List.append(&2, J.Json, Update.carried(m), page)
   +next : String = T.Tweets.bottom_cursor(root)
+  # The token this page was fetched with, so a page that hands the same one back is
+  # recognised as the end rather than followed.
+  +sent : String = Update.verb_cursor(Update.verb_of(m))
   Update.bookmarks_route(
-    Update.page_more(Update.asked_more(U32.from_nat(List.length(&2, J.Json, all)), count), next, had),
+    Update.page_more(Update.asked_more(U32.from_nat(List.length(&2, J.Json, all)), count), next, sent, had),
     m,
     http_status,
     count,

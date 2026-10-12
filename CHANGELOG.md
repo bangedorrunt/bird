@@ -17,7 +17,10 @@ log starts at `0.3.0`.
   was never read: `bookmarks --count 200` answered the same first page every run
   with nothing in the answer to say so, which is invisible truncation for anything
   consuming the stream. The run now follows the cursor until `--count` is met, X
-  offers no further page, or a page carries nothing, joins the pages in X's order,
+  offers no further page, a page carries nothing, or a page hands back the token it
+  was just asked with -- a token that did not move cannot advance the walk, and
+  following it would answer with the same tweets over and over -- joins the pages in
+  X's order,
   cuts the result to exactly `--count`, and says `asked for 200 bookmarks, X had
   137` in `notes` when it ends short. `--raw` still answers one page, because that
   is what the flag means. `--count` also stopped being silently rounded down: a

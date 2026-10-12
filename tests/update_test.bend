@@ -440,6 +440,22 @@ def bookmarks_last_page() -> String:
   ++ "{\"entryId\":\"tweet-5\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"5\",\"legacy\":{\"full_text\":\"and that is all\",\"id_str\":\"5\"}}}}}}"
   ++ "]}]}}}}}"
 
+# A page with a live token and nothing on it. The cursor is real and points somewhere
+# the walk has not been, so a reader that stops only on a missing token asks for this
+# next page forever.
+def bookmarks_empty_page() -> String:
+  "{\"data\":{\"data\":{\"bookmark_timeline_v2\":{\"timeline\":{\"instructions\":[{\"entries\":["
+  ++ "{\"entryId\":\"cursor-bottom-3\",\"content\":{\"entryType\":\"TimelineTimelineCursor\",\"cursorType\":\"Bottom\",\"value\":\"CURSOR3\"}}"
+  ++ "]}]}}}}}"
+
+# A page whose bottom cursor is the token that fetched it: one new tweet, and a token
+# that cannot advance because following it lands back here.
+def bookmarks_cursor_echo() -> String:
+  "{\"data\":{\"data\":{\"bookmark_timeline_v2\":{\"timeline\":{\"instructions\":[{\"entries\":["
+  ++ "{\"entryId\":\"tweet-6\",\"content\":{\"itemContent\":{\"tweet_results\":{\"result\":{\"rest_id\":\"6\",\"legacy\":{\"full_text\":\"the echoed page\",\"id_str\":\"6\"}}}}}},"
+  ++ "{\"entryId\":\"cursor-bottom-1\",\"content\":{\"entryType\":\"TimelineTimelineCursor\",\"cursorType\":\"Bottom\",\"value\":\"CURSOR1\"}}"
+  ++ "]}]}}}}}"
+
 def tweet_file_args() -> List<&2, String>:
   "tweet" <> ("--text-file" <> ("t.txt" <> ("--op-create-tweet" <> ("OPT" <> creds()))))
 
@@ -999,3 +1015,22 @@ def main() -> IO(Unit):
 
     +pg9 : D.Step = boot(search_over_args(), SNil{})
     ok("a page-sized verb keeps its own ceiling", String.contains(failed_message(pg9), "search takes --count 1..50"))
+
+    # The other two ways the walk ends, both under the 200-ask opened above, so the ask
+    # is not what stops them: a page that carried nothing, and a page that hands back
+    # the token it was asked with. Leave either guard out and the first asks forever
+    # while the second re-reads this page until the ask is met, answering with the same
+    # tweet over and over.
+    +pg10 : D.Step = answer(7, 0, 200, bookmarks_page_one(), SNil{}, model_of(pg7))
+    ok("a 200-ask waits after its first page, rather than answering two", String.eq(phase_tag(pg10), "request"))
+
+    +pg11 : D.Step = answer(7, 0, 200, bookmarks_empty_page(), SNil{}, model_of(pg10))
+    ok("a page that carried nothing ends the run", String.eq(phase_tag(pg11), "done"))
+    ok("...with what the pages before it held", U32.is_eq(J.count(J.get_or_null(payload_of(model_of(pg11)), "tweets")), 2))
+    ok("...and no further request", U32.is_eq(http_count(cmds_of(pg11), 0), 0))
+    ok("...saying what the read came to", String.contains(notes_text(pg11), "asked for 200 bookmarks, X had 2"))
+
+    +pg12 : D.Step = answer(7, 0, 200, bookmarks_cursor_echo(), SNil{}, model_of(pg10))
+    ok("a page that hands back the token it was asked with ends the run", String.eq(phase_tag(pg12), "done"))
+    ok("...counting that page once", U32.is_eq(J.count(J.get_or_null(payload_of(model_of(pg12)), "tweets")), 3))
+    ok("...and asking for nothing more", U32.is_eq(http_count(cmds_of(pg12), 0), 0))
