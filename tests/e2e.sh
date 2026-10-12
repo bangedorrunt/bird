@@ -460,6 +460,16 @@ PY
     case_ok "a 404 is not retryable" 4 '"retryable":false' -- read 12345 $LIVE --op-tweet-detail /detail --json
     case_ok "a 429 is retryable, and the envelope says so" 5 '"retryable":true' -- search rust $LIVE --op-search /search --json
 
+    # A request that was sent whose answer never came back: the stand-in reads it and
+    # holds the connection until curl's own budget fires. The code stays `network`,
+    # and the boolean is the part that changes, because a post that timed out may
+    # already be up and "back off and retry" is not advice this run can give. The
+    # same status where nothing was changed is still an ordinary retryable failure,
+    # which is what keeps the rule about the verb rather than about curl.
+    case_ok "a post that timed out says the answer was lost" 6 'the post may already be there' -- tweet hi $LIVE --op-create-tweet /hang --timeout-ms 1000 --json
+    case_ok "...and is not retryable" 6 '"retryable":false' -- tweet hi $LIVE --op-create-tweet /hang --timeout-ms 1000 --json
+    case_ok "a read that timed out stays retryable" 6 '"retryable":true' -- search rust $LIVE --op-search /hang --timeout-ms 1000 --json
+
     # ── the write path and the mentions read, against the stand-in ──────────
     #
     # Every host the run uses is a setting, so the whole media write -- the

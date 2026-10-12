@@ -176,6 +176,14 @@ def Update.verb_in(+cfg: D.RunCfg) -> D.Verb:
 def Update.verb_of(+m: D.Model) -> D.Verb:
   Update.verb_in(Update.cfg_of(m))
 
+# Whether the verb this run is answering a request for changes anything. The
+# transport asks, because a lost answer means something different to a read than to
+# a post: the read can be asked again, the post may already be up. It sits here, next
+# to the verb it reads, because the answer side of the fold calls it and a def may
+# not be called before it is written.
+def Update.writes_in(+m: D.Model) -> Bool:
+  D.Verb.writes(Update.verb_of(m))
+
 def Update.text_in(+s: D.Start) -> String:
   match s:
     case D.Start{stage, items, env, rc, tty, config_path, text, fixture, pending}:
@@ -1346,7 +1354,7 @@ def Update.media_answer_on(+e: Maybe<&2, D.Error>, +http_status: U32, +body: Str
       Update.media_status_ok(H.Http.status_error(H.Resp{http_status, body}), http_status, body, stderr, m)
 
 def Update.media_answer(curl_status: U32, +http_status: U32, +body: String, +stderr: String, +m: D.Model) -> D.Step:
-  Update.media_answer_on(H.Http.transport_error(curl_status), http_status, body, stderr, m)
+  Update.media_answer_on(H.Http.transport_error(Update.writes_in(m), curl_status), http_status, body, stderr, m)
 
 def Update.media_phase_on(+p: D.Phase) -> Bool:
   match p:
@@ -1366,7 +1374,7 @@ def Update.answer_plain(is_media: Bool, curl_status: U32, +http_status: U32, +bo
     case True{}:
       Update.media_answer(curl_status, http_status, body, stderr, m)
     case False{}:
-      Update.transport_ok(H.Http.transport_error(curl_status), http_status, body, stderr, m)
+      Update.transport_ok(H.Http.transport_error(Update.writes_in(m), curl_status), http_status, body, stderr, m)
 
 # A login answer is not JSON and has no status contract, so it takes the branch
 # before the transport's own reading: the page and the bundle are read for what is

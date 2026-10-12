@@ -201,6 +201,13 @@ true for exactly `rate_limited`, `network` and `upstream`, so a caller backing o
 and retrying reads one boolean instead of keeping that table itself. Nothing in a
 run retries on its own.
 
+One case vetoes that table. A request that was **sent** whose answer never came back
+(`curl` 28, 52 or 56) means `tweet` and `reply` may already have posted: those
+answer `"id":"network"` with `"retryable":false` and a hint saying to check the
+account first. The same status on a read stays retryable, and a `curl` 6 or 7 (could
+not resolve, could not connect) stays retryable for a post too, because nothing was
+sent.
+
 The output is one JSON envelope on stdout when `--json` is passed, when
 `BIRD_JSON=1` is set, or when `TERM` is empty or `dumb`. Otherwise a terminal
 gets the data indented, and a failure is `bird: <message>` plus its hint on

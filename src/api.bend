@@ -723,7 +723,7 @@ def Api.placeholder_ids(count: Nat, acc: List<&2, String>) -> List<&2, String>:
 
 def Api.describe_failure(+e: D.Error) -> J.Json:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       J.obj_of(J.pairs1(J.pair("error", J.of_str(message))))
 
 def Api.plan_request_json(+p: Plan) -> J.Json:

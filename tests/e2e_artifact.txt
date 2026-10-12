@@ -597,146 +597,173 @@ stderr:
 
 ok   76. a 429 is retryable, and the envelope says so
 
-## 77. a media write uploads, sets the alt, then posts
+## 77. a post that timed out says the answer was lost
+$ bird tweet hi --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-create-tweet /hang --timeout-ms 1000 --json
+exit 6
+{"ok":false,"error":{"id":"network","message":"curl timed out","hint":"curl exit 28: the request was sent and the answer was lost; check the account before retrying, the post may already be there","retryable":false},"status":0,"body":"","notes":["curl: (28) Operation timed out after 1009 milliseconds with 0 bytes received\n"]}
+
+stderr:
+
+ok   77. a post that timed out says the answer was lost
+
+## 78. ...and is not retryable
+$ bird tweet hi --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-create-tweet /hang --timeout-ms 1000 --json
+exit 6
+{"ok":false,"error":{"id":"network","message":"curl timed out","hint":"curl exit 28: the request was sent and the answer was lost; check the account before retrying, the post may already be there","retryable":false},"status":0,"body":"","notes":["curl: (28) Operation timed out after 1005 milliseconds with 0 bytes received\n"]}
+
+stderr:
+
+ok   78. ...and is not retryable
+
+## 79. a read that timed out stays retryable
+$ bird search rust --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-base-url http://127.0.0.1:<port> --op-search /hang --timeout-ms 1000 --json
+exit 6
+{"ok":false,"error":{"id":"network","message":"curl timed out","hint":"curl exit 28","retryable":true},"status":0,"body":"","notes":["curl: (28) Operation timed out after 1003 milliseconds with 0 bytes received\n"]}
+
+stderr:
+
+ok   79. a read that timed out stays retryable
+
+## 80. a media write uploads, sets the alt, then posts
 $ bird tweet --text media live --media <work>/shot.png --alt a description --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --op-create-tweet create-tweet --json
 exit 0
 {"ok":true,"verb":"tweet","status":200,"data":{"data":{"create_tweet":{"tweet_results":{"result":{"rest_id":"5150","legacy":{"full_text":"media live"}}}}}},"notes":[]}
 
-ok   77. a media write uploads, sets the alt, then posts
+ok   80. a media write uploads, sets the alt, then posts
 
-## 78. mentions reads the timeline its setting names
+## 81. mentions reads the timeline its setting names
 $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   78. mentions reads the timeline its setting names
+ok   81. mentions reads the timeline its setting names
 
-## 79. the server received the upload, the alt and the post, in that order
+## 82. the server received the upload, the alt and the post, in that order
 media: [('POST', '/media/upload.json', 'multipart/form-data;', 205), ('POST', '/media/metadata/create.json', 'application/json', 54)]
 create: [('POST', '/graphql/create-tweet/CreateTweet', 194)]
 mentions: [('GET', '/mentions.json?count=10', 0)]
-ok   79. the server received the upload, the alt and the post, in that order
+ok   82. the server received the upload, the alt and the post, in that order
 
-## 80. an article answers with the article, not its t.co stub
+## 83. an article answers with the article, not its t.co stub
 $ bird read 12345 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --op-tweet-detail detail --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"# the head\n\nthe body","lang":"zxx","created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":"a live article"}]},"notes":[]}
 
-ok   80. an article answers with the article, not its t.co stub
+ok   83. an article answers with the article, not its t.co stub
 
-## 81. a read asked for the article body on the wire
+## 84. a read asked for the article body on the wire
 article: [('POST', '/graphql/detail/TweetDetail', '{"variables":{"focalTweetId":"12345","includePromotedContent":false,"withBirdwatchNotes":false,"withVoice":false},"queryId":"detail","features":{"longform_notetweets_consumption_enabled":true,"responsive_web_twitter_article_tweet_consumption_enabled":true,"longform_notetweets_rich_text_read_enabled":true,"longform_notetweets_inline_media_enabled":true,"articles_preview_enabled":true},"fieldToggles":{"withArticleRichContentState":true,"withArticlePlainText":true}}')]
-ok   81. a read asked for the article body on the wire
+ok   84. a read asked for the article body on the wire
 
-## 82. an attachment that is not there is a usage error
+## 85. an attachment that is not there is a usage error
 $ bird tweet --text hi --media <work>/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},"status":0,"body":"","notes":["curl: (26) Failed to open/read local data from file/application\n"]}
 
 stderr:
 
-ok   82. an attachment that is not there is a usage error
+ok   85. an attachment that is not there is a usage error
 
-## 83. ...and it is not retryable
+## 86. ...and it is not retryable
 $ bird tweet --text hi --media <work>/missing.png --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 2
 {"ok":false,"error":{"id":"usage","message":"curl could not read the file it was told to send","hint":"curl exit 26: check the --media path","retryable":false},"status":0,"body":"","notes":["curl: (26) Failed to open/read local data from file/application\n"]}
 
 stderr:
 
-ok   83. ...and it is not retryable
+ok   86. ...and it is not retryable
 
-## 84. the cookie names a shell already exports are read
+## 87. the cookie names a shell already exports are read
 $ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   84. the cookie names a shell already exports are read
+ok   87. the cookie names a shell already exports are read
 
-## 85. ...and BIRD_ wins when both spellings are set
+## 88. ...and BIRD_ wins when both spellings are set
 $ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 BIRD_AUTH_TOKEN=BIRD-AT BIRD_CT0=BIRD-CT0 bird mentions --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   85. ...and BIRD_ wins when both spellings are set
+ok   88. ...and BIRD_ wins when both spellings are set
 
-## 86. the server received the credential each case asked for
+## 89. the server received the credential each case asked for
 alias only: auth_token=ALIAS-AT; ct0=ALIAS-CT0 | ALIAS-CT0
 both set:   auth_token=BIRD-AT; ct0=BIRD-CT0 | BIRD-CT0
-ok   86. the server received the credential each case asked for
+ok   89. the server received the credential each case asked for
 
-## 87. a mentions answer carries the author from the map beside it
+## 90. a mentions answer carries the author from the map beside it
 $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --gql-base http://127.0.0.1:<port>/graphql --mentions-url http://127.0.0.1:<port>/mentions.json --media-upload-base http://127.0.0.1:<port>/media --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   87. a mentions answer carries the author from the map beside it
+ok   90. a mentions answer carries the author from the map beside it
 
-## 88. login imports the session and reads the bundle for its constants
+## 91. login imports the session and reads the bundle for its constants
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   88. login imports the session and reads the bundle for its constants
+ok   91. login imports the session and reads the bundle for its constants
 
-## 89. ...and reports the verb it ran
+## 92. ...and reports the verb it ran
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   89. ...and reports the verb it ran
+ok   92. ...and reports the verb it ran
 
-## 90. ...and writes the bookmarks operation the bundle carried
+## 93. ...and writes the bookmarks operation the bundle carried
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   90. ...and writes the bookmarks operation the bundle carried
+ok   93. ...and writes the bookmarks operation the bundle carried
 
-## 91. login does not print the cookies it imported
+## 94. login does not print the cookies it imported
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --settings-path <work>/settings.json --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   91. login does not print the cookies it imported
+ok   94. login does not print the cookies it imported
 
-## 92. login writes the default settings path, making its directory
+## 95. login writes the default settings path, making its directory
 $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test-key --web-home http://127.0.0.1:<port>/home --bundle-base http://127.0.0.1:<port>/client-web/ --json
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/home/.config/bird/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
-ok   92. login writes the default settings path, making its directory
+ok   95. login writes the default settings path, making its directory
 
-## 93. a run with no credentials reads the cache login wrote
+## 96. a run with no credentials reads the cache login wrote
 $ bird mentions --settings-path <work>/settings.json --mentions-url http://127.0.0.1:<port>/mentions.json --json
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
-ok   93. a run with no credentials reads the cache login wrote
+ok   96. a run with no credentials reads the cache login wrote
 
-## 94. the server received the session the cache held
+## 97. the server received the session the cache held
 page:     5 requests, GET /home auth_token=SESSION-TOKEN; ct0=CSRF-TOKEN-01
 bundle:   5 requests, GET /client-web/main.livetest.js None
 mentions: GET /mentions.json?count=10 auth_token=SESSION-TOKEN; ct0=CSRF-TOKEN-01 Bearer AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL
-ok   94. the server received the session the cache held
+ok   97. the server received the session the cache held
 
-## 95. on a terminal a read is the tweet, not the envelope
+## 98. on a terminal a read is the tweet, not the envelope
 $ TERM=xterm bird read 12345 --fixture <fixture>
 exit 0
 ^Da fixture tweet
 id 12345
 
-ok   95. on a terminal a read is the tweet, not the envelope
+ok   98. on a terminal a read is the tweet, not the envelope
 
-## 96. a terminal says so when the answer holds no tweet
+## 99. a terminal says so when the answer holds no tweet
 $ TERM=xterm bird read 999 --fixture <fixture>
 exit 0
 ^Dno tweets
 
-ok   96. a terminal says so when the answer holds no tweet
+ok   99. a terminal says so when the answer holds no tweet
 
-## 97. every flag the guides name is one the parser accepts
+## 100. every flag the guides name is one the parser accepts
 flags named in the guides: 33
-ok   97. every flag the guides name is one the parser accepts
+ok   100. every flag the guides name is one the parser accepts
 
-# 97 cases: 97 ok, 0 failed, 0 skipped
+# 100 cases: 100 ok, 0 failed, 0 skipped

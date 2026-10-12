@@ -31,12 +31,12 @@ def cmd_of(+p: A.Plan) -> D.Cmd:
 
 def em(+e: D.Error) -> String:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       message
 
 def ec(+e: D.Error) -> String:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       D.ErrCode.id(code)
 
 def stopped_code(+p: A.Plan) -> String:

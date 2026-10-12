@@ -109,9 +109,25 @@ rendering being guessed right.
 | the session is expired (401) | 3 | `auth` |
 | X refused the account (403) | 3 | `auth` |
 | rate limited (429) | 5 | `rate_limited` |
-| `curl` could not connect or timed out | 6 | `network` |
+| `curl` could not connect (nothing was sent) | 6 | `network` |
+| `curl` timed out, or the answer was lost | 6 | `network` |
 | X answered 5xx | 7 | `upstream` |
 
 X's own words are kept in `body`, and `curl`'s own words (a host that does not
 resolve, a timeout) arrive in `notes`, so a connection that never happened is not
 reported as an empty response.
+
+A post whose request was sent and whose answer never came back is the one failure a
+retry cannot be trusted with. X may have accepted it, so `retryable` is `false` and
+the hint says to check before trying again:
+
+```json
+{"ok":false,"error":{"id":"network","message":"curl timed out","hint":"curl exit 28: the request was sent and the answer was lost; check the account before retrying, the post may already be there","retryable":false},"status":0,"body":"","notes":["curl: (28) Operation timed out after 1000 milliseconds with 0 bytes received\n"]}
+```
+
+That is `curl` 28 (the budget ran out), 52 (the peer answered with nothing) or 56
+(the answer died part way). A timeout is not proof the post failed, only proof the
+answer was lost, so the run reports what it knows rather than guessing: read the
+account and decide. The same status on a read stays retryable, because a read
+changes nothing, and `curl` 6 and 7 stay retryable here too, because nothing was
+sent.

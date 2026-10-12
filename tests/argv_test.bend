@@ -44,7 +44,7 @@ def badness(+p: A.Argv) -> U32:
 
 def message_of(+e: D.Error) -> String:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       message
 
 def error_text(+p: A.Argv) -> String:

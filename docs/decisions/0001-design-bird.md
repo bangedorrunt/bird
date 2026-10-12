@@ -283,7 +283,9 @@ refused or failed the request and none of the local codes fit; a status below
 a response at or above 400, and `ErrCode.retryable` is true for exactly
 `rate_limited`, `network` and `upstream`. Retryability is *reported*, not acted
 on: the failure envelope carries `retryable`, so a caller that backs off and
-retries reads one boolean, and no run retries by itself. A failure keeps what it
+retries reads one boolean, and no run retries by itself. The boolean is not the
+code's alone, though: an error also carries whether its effect may already have
+happened, and that vetoes the code's answer. A failure keeps what it
 has: the
 status when a request happened, X's own body when X sent one, curl's own words as
 a note when the request never started. A local failure carries status 0, which is
@@ -302,6 +304,22 @@ was classified by the generic branch, so a missing attachment came back as
 never exist. Both statuses now map to `usage` with `retryable: false`, and the
 hint names `--media`.
 
+**A sent request whose answer was lost is not a retryable network failure.** curl's
+28 (the budget ran out on a request curl had sent), 52 (a peer that accepted the
+request and answered with nothing) and 56 (an answer that died part way) all mean
+the request was delivered, and for the two verbs that write -- `tweet` and `reply`
+-- X may have accepted it. That failure carried `ErrCode.retryable('network')` and
+the hint `curl exit 28`, so an agent following the documented contract ("`retryable`
+is true for exactly `rate_limited`, `network` and `upstream`") backed off and posted
+the tweet a second time. The code is unchanged, because a code says what went wrong
+and an id is not a retry contract; `Error` gained an `unknown` field instead, set by
+`err_unknown`, and `Error.retryable` is the code's own answer vetoed by it. The veto
+is only ever raised for a verb whose `Verb.writes` is true, so the same status on a
+read stays retryable, and 6, 7 and 35 (could not resolve, could not connect,
+handshake failed) stay retryable on a write too, because nothing was sent. The hint
+names the check rather than the retry: "check the account before retrying, the post
+may already be there".
+
 **Gotcha, found live.** The first version reported a 404, a 429 and a 500 all as
 `status: 0`, because the failure path built a fresh model instead of carrying the
 one the answer arrived on. Every offline test passed. `Model.failed_with` keeps
@@ -316,7 +334,8 @@ attempted. `tests/http_test.bend` pins the code and the boolean offline;
 **Proved by.** `tests/http_test.bend` and `tests/update_test.bend` (status→code,
 exit follows code), `tests/e2e.sh` (refused `--count` → 2 `usage`; no credentials
 → 3 `auth`; real 404 keeps its status; real 429 → `rate_limited` with the exact
-body; real 500 → `upstream`; a local failure → `"status":0`).
+body; real 500 → `upstream`; a local failure → `"status":0`; a post that timed out
+→ `network` with `retryable` false, while the same status on a read is `true`).
 
 ### 9. One result, two renderings: envelope for machines, prose for people
 

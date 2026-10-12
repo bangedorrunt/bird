@@ -12,6 +12,16 @@ log starts at `0.3.0`.
 
 ### Fixed
 
+- **A post that timed out is no longer reported as retryable.** `curl` 28 (the
+  budget ran out on a request it had sent), 52 (a peer that accepted it and
+  answered with nothing) and 56 (an answer that died part way) all mean the request
+  was delivered, so `tweet` and `reply` may already have posted. The envelope said
+  `"id":"network","retryable":true` with the hint `curl exit 28`, and every guide
+  told an agent to back off and retry on exactly that boolean, which is how a
+  caller that follows the contract posts the same tweet twice. Those failures now
+  answer `retryable:false` with a hint saying to check the account first, while the
+  same status on a read stays retryable and `curl` 6 or 7 stays retryable on a
+  write, because nothing was sent. The error id is unchanged.
 - **`bookmarks` reads the whole timeline, not its first page.** X answers a
   bookmark timeline one page at a time with a cursor for the next, and the cursor
   was never read: `bookmarks --count 200` answered the same first page every run

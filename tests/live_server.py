@@ -27,6 +27,7 @@ and `--mentions-url`:
     POST /search                    429  a rate-limit body with no JSON at all
     POST /tweet                     500  an upstream failure
     POST /html                      200  HTML rather than JSON, which is what a wrong route gives
+    POST /hang                      200  nothing, after a hold long enough to time curl out
     POST /media/upload.json         200  a media id, the shape an upload returns
     POST /media/metadata/create.json 200 an empty acceptance of an alt text
     POST /graphql/create-tweet/CreateTweet 200  a created tweet
@@ -47,6 +48,7 @@ server actually bound, which is only known once it has one.
 
 import json
 import sys
+import time
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 LOG = sys.argv[2]
@@ -172,6 +174,13 @@ def paged_answer(body: str) -> str:
     return PAGED_PAGE_NONE
 
 
+# How long the `/hang` route holds a request before letting it go. The case that
+# reads it passes `--timeout-ms 1000`, which is curl's own `--max-time 1`, so this
+# only has to outlast a second: curl gives up with its own status 28 and the hold
+# ends half a second after the case does. This server is single-threaded, so the
+# hold is also the whole reason the number is small.
+HANG_SECS = 1.5
+
 BUNDLE_PATH = "/client-web/main.livetest.js"
 
 # The 20 leading `A`s are not decoration: the real bearer begins with them, and
@@ -206,6 +215,12 @@ class Handler(BaseHTTPRequestHandler):
         route = route_of(self.path)
         if route == "/bookmarks-paged":
             self.answer(200, "application/json", paged_answer(body))
+        elif route == "/hang":
+            # The request is read and then held, and nothing is written back: the
+            # client gives up on its own budget, which is the one failure where the
+            # request was delivered and the answer was lost. Answering, or closing,
+            # would be a different status with a different meaning.
+            time.sleep(HANG_SECS)
         else:
             status, ctype, text = BODIES.get(route, (404, "application/json",
                                                      '{"errors":[{"message":"no such route"}]}'))

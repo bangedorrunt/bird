@@ -67,19 +67,22 @@ def View.verb_of(+cfg: D.RunCfg) -> D.Verb:
 # ── the envelope ────────────────────────────────────────────────────────
 
 # `retryable` is part of the contract, not advice: it is true for exactly
-# `rate_limited`, `network` and `upstream`, so an agent that backs off and retries
-# reads one boolean instead of keeping its own copy of that table. Nothing in a
-# run retries by itself (see the record's non-goals); the caller decides.
+# `rate_limited`, `network` and `upstream`, with one veto. A request that was sent
+# whose answer was lost may already have taken effect, and no code can say that on
+# its own, so `Error.retryable` reads the error rather than the code: an agent that
+# backs off and retries reads one boolean instead of keeping its own copy of that
+# table. Nothing in a run retries by itself (see the record's non-goals); the caller
+# decides.
 def View.envelope(+m: D.Model, +e: D.Error) -> J.Json:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       J.obj_of(J.pairs5(
         J.pair("ok", J.of_bool(False{})),
         J.pair("error", J.obj_of(J.pairs4(
           J.pair("id", J.of_str(D.ErrCode.id(code))),
           J.pair("message", J.of_str(message)),
           J.pair("hint", J.of_str(hint)),
-          J.pair("retryable", J.of_bool(D.ErrCode.retryable(code)))
+          J.pair("retryable", J.of_bool(D.Error.retryable(e)))
         ))),
         J.pair("status", J.of_u32(View.status_of(m))),
         J.pair("body", J.of_str(View.body_of(m))),
@@ -355,7 +358,7 @@ def View.with_hint(+message: String, +hint: String) -> String:
 
 def View.human_error(+e: D.Error) -> String:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       View.with_hint(message, hint)
 
 # ── the commands ────────────────────────────────────────────────────────

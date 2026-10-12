@@ -52,7 +52,7 @@ def error_in(+m: Maybe<&2, D.Error>) -> Bool:
 
 def err_code_id(+e: D.Error) -> String:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       D.ErrCode.id(code)
 
 def code_id_in(+m: Maybe<&2, D.Error>) -> String:
@@ -62,12 +62,24 @@ def code_id_in(+m: Maybe<&2, D.Error>) -> String:
     case None{}:
       SNil{}
 
+def err_hint_text(+e: D.Error) -> String:
+  match e:
+    case D.Error{code, message, hint, unknown}:
+      hint
+
+def hint_in(+m: Maybe<&2, D.Error>) -> String:
+  match m:
+    case Some{e}:
+      err_hint_text(e)
+    case None{}:
+      SNil{}
+
+# The envelope's own answer, not the code's: an error that knows its request was
+# already sent vetoes the code's advice, and that is the boolean a caller reads.
 def retryable_in(+m: Maybe<&2, D.Error>) -> Bool:
   match m:
     case Some{e}:
-      match e:
-        case D.Error{code, message, hint}:
-          D.ErrCode.retryable(code)
+      D.Error.retryable(e)
     case None{}:
       False{}
 
@@ -167,34 +179,67 @@ def main() -> IO(Unit):
     ok("a short answer is not mistaken for a status", U32.is_eq(status_of("ab"), 0))
     ok("a short answer keeps its body", String.eq(body_of("ab"), "ab"))
 
-    # Errors: curl's own failure first, then the HTTP status.
-    ok("curl status 0 is not an error", Bool.not(error_in(H.Http.transport_error(0))))
+    # Errors: curl's own failure first, then the HTTP status. `False{}` and `True{}`
+    # are the verb's own answer to whether it writes, which is what decides whether a
+    # lost answer is a plain failure or an unknown outcome.
+    ok("curl status 0 is not an error", Bool.not(error_in(H.Http.transport_error(False{}, 0))))
     ok("curl status 7 is a network error", String.eq(
-      code_id_in(H.Http.transport_error(7)),
+      code_id_in(H.Http.transport_error(False{}, 7)),
       D.ErrCode.id(D.ErrNetwork{})
     ))
     ok("curl status 28 is a network error too", String.eq(
-      code_id_in(H.Http.transport_error(28)),
+      code_id_in(H.Http.transport_error(False{}, 28)),
       D.ErrCode.id(D.ErrNetwork{})
     ))
+
+    # A sent request whose answer was lost keeps its code and loses its retry. The
+    # code is what went wrong and the id stays branchable; the boolean is whether
+    # repeating the call is safe, and for a post that already left this machine it is
+    # not: X may have accepted it.
+    ok("a timeout on a post is still a network error", String.eq(
+      code_id_in(H.Http.transport_error(True{}, 28)),
+      D.ErrCode.id(D.ErrNetwork{})
+    ))
+    ok("...and says the post may already be there", String.contains(
+      hint_in(H.Http.transport_error(True{}, 28)),
+      "the post may already be there"
+    ))
+    ok("...so it is not retryable", Bool.not(retryable_in(H.Http.transport_error(True{}, 28))))
+    ok("an empty reply on a post is not retryable either", Bool.not(
+      retryable_in(H.Http.transport_error(True{}, 52))
+    ))
+    ok("an answer that died part way is not retryable either", Bool.not(
+      retryable_in(H.Http.transport_error(True{}, 56))
+    ))
+    # The other half of the same rule: a request that never left is safe to repeat,
+    # and a read is safe to repeat whatever happened to the answer.
+    ok("a post that could not connect stays retryable", Bool.not(Bool.not(
+      retryable_in(H.Http.transport_error(True{}, 7))
+    )))
+    ok("a post that could not resolve stays retryable", Bool.not(Bool.not(
+      retryable_in(H.Http.transport_error(True{}, 6))
+    )))
+    ok("a read whose answer was lost stays retryable", Bool.not(Bool.not(
+      retryable_in(H.Http.transport_error(False{}, 28))
+    )))
 
     # A local file curl could not read is the caller's mistake, not a transport
     # failure: the same argv will fail the same way forever, so it must not be
     # reported as retryable. Only the media upload road puts a file in curl's
     # argv, and these two statuses are how curl says it could not read it.
     ok("a file curl cannot read is a usage error", String.eq(
-      code_id_in(H.Http.transport_error(26)),
+      code_id_in(H.Http.transport_error(True{}, 26)),
       D.ErrCode.id(D.ErrUsage{})
     ))
     ok("a file curl cannot open is a usage error too", String.eq(
-      code_id_in(H.Http.transport_error(37)),
+      code_id_in(H.Http.transport_error(True{}, 37)),
       D.ErrCode.id(D.ErrUsage{})
     ))
     ok("a file curl cannot read is not retryable", Bool.not(
-      retryable_in(H.Http.transport_error(26))
+      retryable_in(H.Http.transport_error(True{}, 26))
     ))
     ok("a connection failure still is retryable", Bool.not(Bool.not(
-      retryable_in(H.Http.transport_error(7))
+      retryable_in(H.Http.transport_error(False{}, 7))
     )))
     ok("a 200 is not an error", Bool.not(error_in(H.Http.status_error(H.Http.reply("{\"data\":{}}200")))))
     ok("a 404 is a not-found error", String.eq(

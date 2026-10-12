@@ -138,8 +138,10 @@ def ErrCode.exit_code(c: ErrCode) -> U32:
     case ErrInternal{}:
       1
 
-# Whether retrying the same call unchanged could work: back off on True, do not
-# bother on False.
+# Whether retrying the same call unchanged could work, by code alone: back off on
+# True, do not bother on False. This is only half the answer, and `Error.retryable`
+# is the other half: a code that says "try again" is still wrong for a failure
+# whose effect may already have happened.
 def ErrCode.retryable(c: ErrCode) -> Bool:
   match c:
     case ErrRateLimited{}:
@@ -157,18 +159,38 @@ def ErrCode.retryable(c: ErrCode) -> Bool:
     case ErrInternal{}:
       False{}
 
+# `unknown` is whether the effect may already have happened when this failure was
+# raised: the request was sent and the answer was lost, so the post may exist. It
+# is appended last so the constructors below keep their arity and only patterns
+# have to name it -- the sweep a new field costs is the patterns, not every site
+# that builds one.
 type Error is Data:
   Error{
     code: ErrCode,
     message: String,
     hint: String,
+    unknown: Bool,
   }
 
 def err(code: ErrCode, message: String) -> Error:
-  Error{code, message, SNil{}}
+  Error{code, message, SNil{}, False{}}
 
 def err_hint(code: ErrCode, message: String, hint: String) -> Error:
-  Error{code, message, hint}
+  Error{code, message, hint, False{}}
+
+# The failure a retry cannot be trusted with. The code stays `network`, because a
+# code says what went wrong and this says whether repeating the call is safe: a
+# caller that backs off and retries a timed-out POST posts it twice.
+def err_unknown(code: ErrCode, message: String, hint: String) -> Error:
+  Error{code, message, hint, True{}}
+
+# What the envelope reports, and the only place the two halves meet: the code's own
+# answer, vetoed when the outcome is unknown. A read whose request was lost is still
+# safe to repeat, which is why the veto is only ever raised for a verb that writes.
+def Error.retryable(e: Error) -> Bool:
+  match e:
+    case Error{code, message, hint, unknown}:
+      Bool.and(ErrCode.retryable(code), Bool.not(unknown))
 
 # One place the build names itself, so `bird version`, the help text and the
 # schema cannot disagree.
@@ -184,7 +206,7 @@ def ErrCode.all() -> List<&2, ErrCode>:
 
 def Error.exit_code(e: Error) -> U32:
   match e:
-    case Error{code, message, hint}:
+    case Error{code, message, hint, unknown}:
       ErrCode.exit_code(code)
 
 type MediaKind is Data:

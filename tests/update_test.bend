@@ -2,6 +2,7 @@ import Base
 import ../src/update.bend as U
 import ../src/domain.bend as D
 import ../src/json.bend as J
+import ../src/view.bend as V
 
 # End-to-end check of the fold. No network, no filesystem: a run is scripted by
 # handing `Update.step` the messages the interpreter would deliver, in order, and
@@ -67,7 +68,7 @@ def phase_tag(+s: D.Step) -> String:
 
 def err_id(+e: D.Error) -> String:
   match e:
-    case D.Error{code, message, hint}:
+    case D.Error{code, message, hint, unknown}:
       D.ErrCode.id(code)
 
 def code_of_phase(+p: D.Phase) -> String:
@@ -89,7 +90,7 @@ def message_of_phase(+p: D.Phase) -> String:
   match p:
     case D.PhaseFailed{error}:
       match error:
-        case D.Error{code, message, hint}:
+        case D.Error{code, message, hint, unknown}:
           message
     case _:
       SNil{}
@@ -98,7 +99,7 @@ def hint_of_phase(+p: D.Phase) -> String:
   match p:
     case D.PhaseFailed{error}:
       match error:
-        case D.Error{code, message, hint}:
+        case D.Error{code, message, hint, unknown}:
           hint
     case _:
       SNil{}
@@ -110,6 +111,36 @@ def failed_hint_of(+m: D.Model) -> String:
 
 def failed_hint(+s: D.Step) -> String:
   failed_hint_of(model_of(s))
+
+def error_of(+m: D.Model) -> D.Error:
+  match m:
+    case D.Model{phase, start, cfg, status, payload, body, exit_code, notes}:
+      match phase:
+        case D.PhaseFailed{error}:
+          error
+        case _:
+          D.err(D.ErrInternal{}, "the run did not fail")
+
+# `retryable` is decided in the envelope, from the error rather than from the code
+# alone, so a case about the retry contract has to read the envelope the caller would
+# print. Nothing else reports it. Each match scrutinee is bound first: a match may
+# not scrutinise a computed value.
+def retryable_in(+m: Maybe<&2, J.Json>) -> Bool:
+  match m:
+    case Some{v}:
+      match v:
+        case J.JsonBool{value}:
+          value
+        case _:
+          False{}
+    case None{}:
+      False{}
+
+def envelope_of(+s: D.Step) -> J.Json:
+  V.View.envelope(model_of(s), error_of(model_of(s)))
+
+def is_retryable(+s: D.Step) -> Bool:
+  retryable_in(J.get(J.get_or_null(envelope_of(s), "error"), "retryable"))
 
 def failed_message_of(+m: D.Model) -> String:
   match m:
@@ -396,6 +427,12 @@ def whoami_raw_args() -> List<&2, String>:
 
 def search_args() -> List<&2, String>:
   "search" <> ("hi" <> creds())
+
+# A post that reaches the wire: the text is here, so nothing stops it at the
+# no-text gate, and there is no media, so it takes the plain road rather than the
+# upload queue.
+def tweet_send_args() -> List<&2, String>:
+  "tweet" <> ("--text" <> ("hi" <> ("--op-create-tweet" <> ("OPT" <> creds()))))
 
 # The bookmark lists. Three tweets are asked for so that one page cannot answer it:
 # a page holds as many as X sends, and this run must still open a second request.
@@ -1034,3 +1071,30 @@ def main() -> IO(Unit):
     ok("a page that hands back the token it was asked with ends the run", String.eq(phase_tag(pg12), "done"))
     ok("...counting that page once", U32.is_eq(J.count(J.get_or_null(payload_of(model_of(pg12)), "tweets")), 3))
     ok("...and asking for nothing more", U32.is_eq(http_count(cmds_of(pg12), 0), 0))
+
+    # ── 29. a lost answer on a post is an unknown outcome ───────────────
+    #
+    # curl 28, 52 and 56 all mean the request was sent and the answer never came
+    # back. On a read that is a plain network failure and asking again is fine. On a
+    # post X may have accepted it, so the code stays `network` while the boolean the
+    # caller branches on goes false: a retry there is what posts the tweet twice.
+    +rr1 : D.Step = answer(7, 28, 0, SNil{}, SNil{}, model_of(boot(tweet_send_args(), SNil{})))
+    ok("a timed-out post is a network failure", String.eq(failed_code(rr1), "network"))
+    ok("...whose hint says the post may already be there", String.contains(failed_hint(rr1), "the post may already be there"))
+    ok("...and is not retryable", Bool.not(is_retryable(rr1)))
+
+    +rr2 : D.Step = answer(7, 52, 0, SNil{}, SNil{}, model_of(boot(tweet_send_args(), SNil{})))
+    ok("an empty reply on a post is not retryable", Bool.not(is_retryable(rr2)))
+    +rr3 : D.Step = answer(7, 56, 0, SNil{}, SNil{}, model_of(boot(tweet_send_args(), SNil{})))
+    ok("an answer that died on a post is not retryable", Bool.not(is_retryable(rr3)))
+
+    # The other half, and the reason the decision is the verb's rather than the
+    # code's: the very same status is an ordinary retryable failure where nothing
+    # was changed, and a post that never left is safe to repeat.
+    +rr4 : D.Step = answer(7, 28, 0, SNil{}, SNil{}, model_of(boot(search_args(), SNil{})))
+    ok("a read whose answer was lost stays retryable", is_retryable(rr4))
+    +rr5 : D.Step = answer(7, 7, 0, SNil{}, SNil{}, model_of(boot(tweet_send_args(), SNil{})))
+    ok("a post that never connected stays retryable", is_retryable(rr5))
+    ok("...with curl's own words in the hint", String.eq(failed_hint(rr5), "curl exit 7"))
+    +rr6 : D.Step = answer(7, 6, 0, SNil{}, SNil{}, model_of(boot(tweet_send_args(), SNil{})))
+    ok("a post whose host did not resolve stays retryable", is_retryable(rr6))

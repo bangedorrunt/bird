@@ -225,30 +225,71 @@ def Http.local_file_error(+curl_status: U32) -> D.Error:
     "curl exit " ++ U32.show(curl_status) ++ ": check the --media path"
   )
 
-def Http.transport_failed(+curl_status: U32) -> Maybe<&2, D.Error>:
+# curl statuses that mean the request had already left this machine when it failed:
+# the send happened and the answer never came back. 28 is the budget running out on
+# a request curl had sent, 52 is a peer that accepted the request and answered with
+# nothing, 56 is an answer that died part way through. 6, 7 and 35 (could not
+# resolve, could not connect, handshake failed) are deliberately NOT here: nothing
+# was sent, so the call can simply be made again.
+def Http.lost_status(+curl_status: U32) -> Bool:
+  match curl_status:
+    case 28:
+      True{}
+    case 52:
+      True{}
+    case 56:
+      True{}
+    case _:
+      False{}
+
+# The hint for the one case where "try again" is not safe advice, so it says what is
+# actually known and what to do about it. A caller that follows this checks the
+# account and finds the post it was about to make a second time.
+def Http.lost_hint(+curl_status: U32) -> String:
+  "curl exit " ++ U32.show(curl_status) ++ ": the request was sent and the answer was lost; check the account before retrying, the post may already be there"
+
+def Http.transport_plain(+curl_status: U32) -> D.Error:
+  D.err_hint(
+    D.ErrNetwork{},
+    Http.words(curl_status),
+    "curl exit " ++ U32.show(curl_status)
+  )
+
+def Http.transport_lost(+curl_status: U32) -> D.Error:
+  D.err_unknown(D.ErrNetwork{}, Http.words(curl_status), Http.lost_hint(curl_status))
+
+# `maybe_applied` is decided by the caller, because only the caller knows whether the
+# verb writes: the same curl status is a plain retryable network failure on a read
+# and an unknown outcome on a post.
+def Http.transport_failed_on(maybe_applied: Bool, +curl_status: U32) -> Maybe<&2, D.Error>:
+  match maybe_applied:
+    case True{}:
+      Some{Http.transport_lost(curl_status)}
+    case False{}:
+      Some{Http.transport_plain(curl_status)}
+
+def Http.transport_failed(writes: Bool, +curl_status: U32) -> Maybe<&2, D.Error>:
   match curl_status:
     case 26:
       Some{Http.local_file_error(curl_status)}
     case 37:
       Some{Http.local_file_error(curl_status)}
     case _:
-      Some{D.err_hint(
-        D.ErrNetwork{},
-        Http.words(curl_status),
-        "curl exit " ++ U32.show(curl_status)
-      )}
+      Http.transport_failed_on(Bool.and(writes, Http.lost_status(curl_status)), curl_status)
 
 # curl's own exit status, not the HTTP status: 0 means a response arrived and
-# the HTTP status is worth reading, anything else means it did not.
-def Http.transport_error_on(ok: Bool, +curl_status: U32) -> Maybe<&2, D.Error>:
+# the HTTP status is worth reading, anything else means it did not. `writes` is the
+# verb's own answer to "does this request change anything", and it is what decides
+# whether a lost answer leaves the outcome unknown.
+def Http.transport_error_on(writes: Bool, ok: Bool, +curl_status: U32) -> Maybe<&2, D.Error>:
   match ok:
     case True{}:
       None{}
     case False{}:
-      Http.transport_failed(curl_status)
+      Http.transport_failed(writes, curl_status)
 
-def Http.transport_error(+curl_status: U32) -> Maybe<&2, D.Error>:
-  Http.transport_error_on(U32.is_zero(curl_status), curl_status)
+def Http.transport_error(writes: Bool, +curl_status: U32) -> Maybe<&2, D.Error>:
+  Http.transport_error_on(writes, U32.is_zero(curl_status), curl_status)
 
 # An error message printed whole can be a page of JSON, so the response's own
 # words are cut to something a person can read in a terminal.

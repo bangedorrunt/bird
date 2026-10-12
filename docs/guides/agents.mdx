@@ -52,6 +52,21 @@ own answer, which is often the useful part of a 4xx.
 so a caller that wants to back off and retry reads one boolean instead of keeping
 its own copy of that table. Nothing in a run retries by itself.
 
+One case vetoes the table, and it is the one that costs a duplicate post: a request
+that was **sent** whose answer never came back. `tweet` and `reply` are the only two
+verbs that change anything, and a `curl` timeout (28), an empty reply (52) or an
+answer that died part way (56) all mean X may have accepted the post. Those answer
+`"id":"network"` with `"retryable":false` and a hint saying to check the account
+before retrying:
+
+```json
+{"ok":false,"error":{"id":"network","message":"curl timed out","hint":"curl exit 28: the request was sent and the answer was lost; check the account before retrying, the post may already be there","retryable":false},"status":0,"body":"","notes":["curl: (28) Operation timed out after 1000 milliseconds with 0 bytes received\n"]}
+```
+
+The same status on a read is an ordinary retryable failure. `curl` 6 and 7 (could
+not resolve, could not connect) mean nothing was sent, so those stay retryable for a
+post as well: the rule is about the request, not about the status.
+
 ## Exit codes
 
 | 0 | 2 | 3 | 4 | 5 | 6 | 7 | 1 |
