@@ -3,6 +3,7 @@ import ./src/domain.bend as D
 import ./src/json.bend as J
 import ./src/argv.bend as A
 import ./src/http.bend as H
+import ./src/update.bend as U
 
 # Laws, not tests. Each entry is an open claim about the code: a property that
 # must hold for EVERY value of the bound variables, not for one example. The
@@ -106,3 +107,24 @@ law alt_flag_is_an_alt_item:
 law the_timeout_floor_is_one_second:
   for seconds: U32
   {U32.is_eq(H.Http.pick_secs(False{}, seconds), 1) == True{} : Bool}
+
+# ── effects are data, errors are values ─────────────────────────────────────
+
+# Once a run has failed, the fold ignores every message that arrives after it and
+# issues no further command. This is the guard `Update.step` applies before it
+# dispatches; a late answer must not revive the failed run. The law states the
+# guard, so a change that lets a message through is a failing claim.
+law failed_run_ignores_messages:
+  for msg: D.Msg
+  for m: D.Model
+  {D.Step.only(m) == U.Update.step_over(True{}, msg, m) : D.Step}
+
+# An error whose effect may already have happened is never retryable, whatever
+# the code says. A timed-out POST retried by a caller that backs off posts twice,
+# so the veto in `Error.retryable` must hold for every code, not just the ones
+# a test happens to build.
+law unknown_error_is_not_retryable:
+  for c: D.ErrCode
+  for m: String
+  for h: String
+  {D.Error.retryable(D.err_unknown(c, m, h)) == False{} : Bool}

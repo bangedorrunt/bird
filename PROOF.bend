@@ -160,6 +160,33 @@ def Laws.verb_word_reaches_verb(v):
 def Laws.the_timeout_floor_is_one_second(seconds):
   {==}
 
+# ── failed_run_ignores_messages ────────────────────────────────────────────
+# `step_over` matches on the flag before it reads the message, so with `True`
+# the goal reduces to `Step.only(m)` on both sides and needs no case split.
+def Laws.failed_run_ignores_messages(msg, m):
+  {==}
+
+# ── unknown_error_is_not_retryable ─────────────────────────────────────────
+# `unknown` is `True`, so `Bool.not` gives `False` and `Bool.and` returns
+# `False` whatever `ErrCode.retryable` says. One case per code, so every
+# constructor is named and a new one fails here until it is covered.
+def Laws.unknown_error_is_not_retryable(c, m, h):
+  match c:
+    case D.ErrUsage{}:
+      {==}
+    case D.ErrAuth{}:
+      {==}
+    case D.ErrNotFound{}:
+      {==}
+    case D.ErrRateLimited{}:
+      {==}
+    case D.ErrNetwork{}:
+      {==}
+    case D.ErrUpstream{}:
+      {==}
+    case D.ErrInternal{}:
+      {==}
+
 # ── media_flag_is_a_media_item / alt_flag_is_an_alt_item ───────────────────
 # Nothing to case on: both sides reduce to the same item, so reflexivity is the
 # whole proof. That is the point -- the mapping is one table lookup, and this
