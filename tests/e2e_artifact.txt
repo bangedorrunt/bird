@@ -7,6 +7,8 @@ $ bird --help
 exit 0
 {"ok":true,"verb":"help","status":0,"data":"bird -- post and read X/Twitter\n\nusage: bird <verb> [flags]\n\nverbs\n  tweet [--text <text>] [--media <path>] [--alt <text>]   post a tweet\n  reply <tweet-id|url> [--text <text>] [--media <path>]   reply to a tweet\n  read <tweet-id|url>                                    one tweet\n  replies <tweet-id|url>                                 replies to a tweet\n  thread <tweet-id|url>                                  a whole thread\n  search <query> [--count <n>]                           recent tweets\n  mentions [--count <n>]                                 mentions of you\n  bookmarks [--count <n>]                                your saved bookmarks\n  whoami                                                 the signed-in account\n  check                                                  whether credentials work\n  login [--cookie-source chrome|firefox]                 import a session and the rotating settings\n  help                                                   this text\n  schema                                                 this, as json\n  version                                                the build\n\nsettings\n  --engine graphql|sweetistics|auto   which backend answers\n  --auth-token <token> --ct0 <token>  X session cookies\n  --sweetistics-api-key <key>         API key for the sweetistics backend\n  --web-bearer <token>                client bearer for the graphql engine\n  --gql-features <json>               graphql feature flags, they rotate\n  --op-create-tweet and friends       graphql operation ids, they rotate\n  --media-upload-base <url>           where X's media service lives\n  --gql-base <url>                    where X's graphql endpoint lives\n  --mentions-url <url>                X's mentions timeline endpoint\n  --cookie-source chrome|firefox      login: which browser to read the session from\n  --cookie-db <path>                  login: that browser's cookie database\n  --chrome-key <password>             login: Chrome's keychain password, instead of the keychain\n  --web-home <url>                    login: the page whose bundle names the bearer and ids\n  --bundle-base <url>                 login: where the client bundle is served from\n  --settings-path <path>              where the settings cache lives\n  --raw                               the response as X sent it, unfolded\n  --json                              one json envelope on stdout\n  --dry-run                           describe the request, send nothing\n  --timeout-ms <n>                    per-request timeout, 1000..120000\n\nenvironment\n  BIRD_JSON=1                         same as --json\n  BIRD_CONFIG                         a json object of flag names and values\n  BIRD_<flag>                         --auth-token is BIRD_AUTH_TOKEN, --count is BIRD_COUNT\n  TWITTER_AUTH_TOKEN / TWITTER_CT0    also read; BIRD_ wins when both are set\n\nexit codes\n  0 ok   2 usage   3 auth   4 not found   5 rate limited\n  6 network   7 upstream   1 internal\n","notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   1. the manual comes out as one envelope on a pipe
 
 ## 2. no arguments is the manual too
@@ -14,6 +16,8 @@ $ bird
 exit 0
 {"ok":true,"verb":"help","status":0,"data":"bird -- post and read X/Twitter\n\nusage: bird <verb> [flags]\n\nverbs\n  tweet [--text <text>] [--media <path>] [--alt <text>]   post a tweet\n  reply <tweet-id|url> [--text <text>] [--media <path>]   reply to a tweet\n  read <tweet-id|url>                                    one tweet\n  replies <tweet-id|url>                                 replies to a tweet\n  thread <tweet-id|url>                                  a whole thread\n  search <query> [--count <n>]                           recent tweets\n  mentions [--count <n>]                                 mentions of you\n  bookmarks [--count <n>]                                your saved bookmarks\n  whoami                                                 the signed-in account\n  check                                                  whether credentials work\n  login [--cookie-source chrome|firefox]                 import a session and the rotating settings\n  help                                                   this text\n  schema                                                 this, as json\n  version                                                the build\n\nsettings\n  --engine graphql|sweetistics|auto   which backend answers\n  --auth-token <token> --ct0 <token>  X session cookies\n  --sweetistics-api-key <key>         API key for the sweetistics backend\n  --web-bearer <token>                client bearer for the graphql engine\n  --gql-features <json>               graphql feature flags, they rotate\n  --op-create-tweet and friends       graphql operation ids, they rotate\n  --media-upload-base <url>           where X's media service lives\n  --gql-base <url>                    where X's graphql endpoint lives\n  --mentions-url <url>                X's mentions timeline endpoint\n  --cookie-source chrome|firefox      login: which browser to read the session from\n  --cookie-db <path>                  login: that browser's cookie database\n  --chrome-key <password>             login: Chrome's keychain password, instead of the keychain\n  --web-home <url>                    login: the page whose bundle names the bearer and ids\n  --bundle-base <url>                 login: where the client bundle is served from\n  --settings-path <path>              where the settings cache lives\n  --raw                               the response as X sent it, unfolded\n  --json                              one json envelope on stdout\n  --dry-run                           describe the request, send nothing\n  --timeout-ms <n>                    per-request timeout, 1000..120000\n\nenvironment\n  BIRD_JSON=1                         same as --json\n  BIRD_CONFIG                         a json object of flag names and values\n  BIRD_<flag>                         --auth-token is BIRD_AUTH_TOKEN, --count is BIRD_COUNT\n  TWITTER_AUTH_TOKEN / TWITTER_CT0    also read; BIRD_ wins when both are set\n\nexit codes\n  0 ok   2 usage   3 auth   4 not found   5 rate limited\n  6 network   7 upstream   1 internal\n","notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   2. no arguments is the manual too
 
 ## 3. version names the build
@@ -21,6 +25,8 @@ $ bird version --json
 exit 0
 {"ok":true,"verb":"version","status":0,"data":{"version":"0.3.0"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   3. version names the build
 
 ## 4. schema lists the verbs it will accept
@@ -28,6 +34,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   4. schema lists the verbs it will accept
 
 ## 5. schema agrees that reading does not write
@@ -35,6 +43,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   5. schema agrees that reading does not write
 
 ## 6. schema names the default graphql host
@@ -42,6 +52,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   6. schema names the default graphql host
 
 ## 7. schema names the default mentions url
@@ -49,6 +61,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   7. schema names the default mentions url
 
 ## 8. schema names the default media host
@@ -56,6 +70,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   8. schema names the default media host
 
 ## 9. schema names the default operation ids
@@ -63,6 +79,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   9. schema names the default operation ids
 
 ## 10. schema names the recorded bookmarks operation
@@ -70,6 +88,8 @@ $ bird schema --json
 exit 0
 {"ok":true,"verb":"schema","status":0,"data":{"name":"bird","version":"0.3.0","usage":"bird <verb> [flags]","verbs":[{"name":"tweet","writes":true,"network":true},{"name":"reply","writes":true,"network":true},{"name":"read","writes":false,"network":true},{"name":"replies","writes":false,"network":true},{"name":"thread","writes":false,"network":true},{"name":"search","writes":false,"network":true},{"name":"mentions","writes":false,"network":true},{"name":"bookmarks","writes":false,"network":true},{"name":"whoami","writes":false,"network":true},{"name":"check","writes":false,"network":false},{"name":"login","writes":false,"network":true},{"name":"help","writes":false,"network":false},{"name":"schema","writes":false,"network":false},{"name":"version","writes":false,"network":false}],"flags":[{"name":"--json","kind":"switch"},{"name":"--raw","kind":"switch"},{"name":"--dry-run","kind":"switch"},{"name":"--text","kind":"value"},{"name":"--text-file","kind":"value"},{"name":"--media","kind":"media"},{"name":"--alt","kind":"alt"},{"name":"--engine","kind":"value"},{"name":"--count","kind":"value"},{"name":"--timeout-ms","kind":"value"},{"name":"--fixture","kind":"value"},{"name":"--auth-token","kind":"value"},{"name":"--ct0","kind":"value"},{"name":"--sweetistics-api-key","kind":"value"},{"name":"--sweetistics-base-url","kind":"value"},{"name":"--op-create-tweet","kind":"value"},{"name":"--op-tweet-detail","kind":"value"},{"name":"--op-search","kind":"value"},{"name":"--op-bookmarks","kind":"value"},{"name":"--op-viewer","kind":"value"},{"name":"--web-bearer","kind":"value"},{"name":"--gql-features","kind":"value"},{"name":"--media-upload-base","kind":"value"},{"name":"--gql-base","kind":"value"},{"name":"--mentions-url","kind":"value"},{"name":"--bundle-base","kind":"value"},{"name":"--cookie-source","kind":"value"},{"name":"--cookie-db","kind":"value"},{"name":"--chrome-key","kind":"value"},{"name":"--web-home","kind":"value"},{"name":"--settings-path","kind":"value"}],"defaults":{"engine":"graphql","count":10,"timeout_ms":15000,"gql_features":"{}","media_upload_base":"https://upload.twitter.com/1.1/media","gql_base":"https://x.com/i/api/graphql","mentions_url":"https://x.com/i/api/2/notifications/mentions.json","op_create_tweet":"CreateTweet","op_tweet_detail":"TweetDetail","op_search":"SearchTimeline","op_bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","op_viewer":"Viewer"},"exit_codes":[{"id":"ok","code":0},{"id":"usage","code":2},{"id":"auth","code":3},{"id":"not_found","code":4},{"id":"rate_limited","code":5},{"id":"network","code":6},{"id":"upstream","code":7},{"id":"internal","code":1}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   10. schema names the recorded bookmarks operation
 
 ## 11. an unknown flag is refused by name
@@ -79,6 +99,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   11. an unknown flag is refused by name
 
 ## 12. a verb without its argument is refused by name
@@ -88,6 +109,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   12. a verb without its argument is refused by name
 
 ## 13. a tweet with nothing to send is refused
@@ -97,6 +119,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   13. a tweet with nothing to send is refused
 
 ## 14. a read with no credentials stops at the credential check
@@ -106,6 +129,7 @@ exit 3
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   14. a read with no credentials stops at the credential check
 
 ## 15. a missing file is refused with the path and the reason
@@ -115,6 +139,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   15. a missing file is refused with the path and the reason
 
 ## 16. a config file that is not json names itself
@@ -124,6 +149,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   16. a config file that is not json names itself
 
 ## 17. a dry run prints the curl argv it would use
@@ -131,6 +157,8 @@ $ bird search rust --auth-token T --ct0 C --web-bearer BEARER --gql-features {} 
 exit 0
 {"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":10,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":10,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   17. a dry run prints the curl argv it would use
 
 ## 18. a text full of shell metacharacters stays one argument
@@ -138,6 +166,8 @@ $ bird tweet --text a; rm -rf / --auth-token T --ct0 C --web-bearer BEARER --gql
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"a; rm -rf /\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"a; rm -rf /\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   18. a text full of shell metacharacters stays one argument
 
 ## 19. a tweet id is read out of a url
@@ -145,6 +175,8 @@ $ bird read https://x.com/someone/status/99887766 --auth-token T --ct0 C --web-b
 exit 0
 {"ok":true,"verb":"read","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/TweetDetail/TweetDetail","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"focalTweetId\":\"99887766\",\"includePromotedContent\":false,\"withBirdwatchNotes\":false,\"withVoice\":false},\"queryId\":\"TweetDetail\",\"features\":{\"longform_notetweets_consumption_enabled\":true,\"responsive_web_twitter_article_tweet_consumption_enabled\":true,\"longform_notetweets_rich_text_read_enabled\":true,\"longform_notetweets_inline_media_enabled\":true,\"articles_preview_enabled\":true},\"fieldToggles\":{\"withArticleRichContentState\":true,\"withArticlePlainText\":true}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/TweetDetail/TweetDetail","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"focalTweetId\":\"99887766\",\"includePromotedContent\":false,\"withBirdwatchNotes\":false,\"withVoice\":false},\"queryId\":\"TweetDetail\",\"features\":{\"longform_notetweets_consumption_enabled\":true,\"responsive_web_twitter_article_tweet_consumption_enabled\":true,\"longform_notetweets_rich_text_read_enabled\":true,\"longform_notetweets_inline_media_enabled\":true,\"articles_preview_enabled\":true},\"fieldToggles\":{\"withArticleRichContentState\":true,\"withArticlePlainText\":true}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   19. a tweet id is read out of a url
 
 ## 20. a sub-second budget floors at one second, not zero
@@ -152,6 +184,8 @@ $ bird check --timeout-ms 0 --json
 exit 0
 {"ok":true,"verb":"check","status":0,"data":{"engine":"graphql","credentials":"none","operations":{"create_tweet":"CreateTweet","tweet_detail":"TweetDetail","search":"SearchTimeline","bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","viewer":"Viewer"},"timeout_ms":1000},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   20. a sub-second budget floors at one second, not zero
 
 ## 21. a budget past the ceiling is clamped to it
@@ -159,6 +193,8 @@ $ bird check --timeout-ms 999999 --json
 exit 0
 {"ok":true,"verb":"check","status":0,"data":{"engine":"graphql","credentials":"none","operations":{"create_tweet":"CreateTweet","tweet_detail":"TweetDetail","search":"SearchTimeline","bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","viewer":"Viewer"},"timeout_ms":120000},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   21. a budget past the ceiling is clamped to it
 
 ## 22. a count past a verb's ceiling is refused, not rounded down
@@ -168,6 +204,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   22. a count past a verb's ceiling is refused, not rounded down
 
 ## 23. a fixture is the body, not the path that named it
@@ -175,6 +212,8 @@ $ bird read 12345 --fixture <work>/tweet.json --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"a fixture tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   23. a fixture is the body, not the path that named it
 
 ## 24. a fixture answers with the status a real 200 would
@@ -182,6 +221,8 @@ $ bird read 12345 --fixture <work>/tweet.json --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"a fixture tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   24. a fixture answers with the status a real 200 would
 
 ## 25. a read answers with the tweet, not with X's envelope
@@ -189,6 +230,8 @@ $ bird read 12345 --fixture <work>/tweet.json --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"a fixture tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   25. a read answers with the tweet, not with X's envelope
 
 ## 26. ...and none of the envelope is left in it
@@ -196,6 +239,8 @@ $ bird read 12345 --fixture <work>/tweet.json --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"a fixture tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   26. ...and none of the envelope is left in it
 
 ## 27. --raw is the way to see the envelope again
@@ -203,6 +248,8 @@ $ bird read 12345 --fixture <work>/tweet.json --raw --json
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"data":{"tweetResult":{"result":{"rest_id":"12345","legacy":{"full_text":"a fixture tweet","id_str":"12345"}}}}},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   27. --raw is the way to see the envelope again
 
 ## 28. a text file supplies the text when the command line does not
@@ -210,6 +257,8 @@ $ bird tweet --text-file <work>/text.txt --auth-token T --ct0 C --web-bearer BEA
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hello from a file\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hello from a file\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   28. a text file supplies the text when the command line does not
 
 ## 29. the command line beats the text file
@@ -217,6 +266,8 @@ $ bird tweet --text explicit --text-file <work>/text.txt --auth-token T --ct0 C 
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"explicit\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"explicit\",\"dark_request\":false},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   29. the command line beats the text file
 
 ## 30. a config file sets a setting
@@ -224,6 +275,8 @@ $ BIRD_CONFIG=<work>/count.json bird search rust --auth-token T --ct0 C --web-be
 exit 0
 {"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":7,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":7,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   30. a config file sets a setting
 
 ## 31. a flag beats the config file
@@ -231,6 +284,8 @@ $ BIRD_CONFIG=<work>/count.json bird search rust --count 2 --auth-token T --ct0 
 exit 0
 {"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":2,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":2,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   31. a flag beats the config file
 
 ## 32. a count that is not a number is refused, not defaulted
@@ -240,6 +295,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   32. a count that is not a number is refused, not defaulted
 
 ## 33. a timeout that is not a number is refused, not defaulted
@@ -249,6 +305,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   33. a timeout that is not a number is refused, not defaulted
 
 ## 34. a negative count is refused rather than clamped
@@ -258,6 +315,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   34. a negative count is refused rather than clamped
 
 ## 35. a count of zero is a number, so it is the clamp's business
@@ -265,6 +323,8 @@ $ bird search rust --count 0 --auth-token T --ct0 C --web-bearer BEARER --gql-fe
 exit 0
 {"ok":true,"verb":"search","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"rawQuery\":\"rust\",\"count\":1,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/SearchTimeline/SearchTimeline","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"rawQuery\":\"rust\",\"count\":1,\"query_source\":\"typed_query\",\"product\":\"Latest\"},\"queryId\":\"SearchTimeline\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   35. a count of zero is a number, so it is the clamp's business
 
 ## 36. an alt with no media to describe is refused
@@ -274,6 +334,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   36. an alt with no media to describe is refused
 
 ## 37. an unsupported media type is refused by name
@@ -283,6 +344,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   37. an unsupported media type is refused by name
 
 ## 38. five images is one too many
@@ -292,6 +354,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   38. five images is one too many
 
 ## 39. images and a video are refused together
@@ -301,6 +364,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   39. images and a video are refused together
 
 ## 40. a media write describes a media plan
@@ -308,6 +372,8 @@ $ bird tweet --text hi --media <work>/shot.png --auth-token T --ct0 C --web-bear
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   40. a media write describes a media plan
 
 ## 41. ...with the upload step's endpoint
@@ -315,6 +381,8 @@ $ bird tweet --text hi --media <work>/shot.png --auth-token T --ct0 C --web-bear
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   41. ...with the upload step's endpoint
 
 ## 42. ...and the ids marked as coming from the answers
@@ -322,6 +390,8 @@ $ bird tweet --text hi --media <work>/shot.png --auth-token T --ct0 C --web-bear
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]}],"request":{"method":"POST","url":"https://x.com/i/api/graphql/CreateTweet/CreateTweet","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/CreateTweet/CreateTweet","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"tweet_text\":\"hi\",\"dark_request\":false,\"media\":{\"media_entities\":[{\"media_id\":\"<from-upload>\",\"tagged_users\":[]}],\"possibly_sensitive\":false}},\"queryId\":\"CreateTweet\",\"features\":{}}","--write-out","%{http_code}"]},"note":"the media ids in the final request are filled from the upload responses"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   42. ...and the ids marked as coming from the answers
 
 ## 43. four images and four alts are one legal plan
@@ -329,6 +399,8 @@ $ bird tweet --text hi --media <work>/shot.png --media <work>/second.png --media
 exit 0
 {"ok":true,"verb":"tweet","status":0,"data":{"kind":"media-plan","steps":[{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/shot.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/shot.png","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a\"}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/metadata/create.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"a\"}}","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/second.png"],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/upload.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-F","media=@<work>/second.png","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/metadata/create.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"b\"}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://upload.twitter.com/1.1/media/metadata/create.json","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"media_id\":\"<from-upload>\",\"alt_text\":{\"text\":\"b\"}}","--write-out","%{http_code}"]},{"method":"POST","url":"https://upload.twitter.com/1.1/media/upload.json","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":["media=@<work>/third.png"],"timeout_ms":15000,"curl":["
 ... (    8657 bytes in total, truncated in this transcript)
+stderr:
+bend 2.0.37 is available: run bend update
 ok   43. four images and four alts are one legal plan
 
 ## 44. a fixture cannot answer a media write
@@ -338,6 +410,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   44. a fixture cannot answer a media write
 
 ## 45. an api key cannot carry a media write
@@ -347,6 +420,7 @@ exit 3
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   45. an api key cannot carry a media write
 
 ## 46. a target with no id in it is refused by name
@@ -356,6 +430,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   46. a target with no id in it is refused by name
 
 ## 47. ...and so is a url with no id in it
@@ -365,6 +440,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   47. ...and so is a url with no id in it
 
 ## 48. a share url still yields its id
@@ -372,6 +448,8 @@ $ bird read https://x.com/u/status/99887766?s=20&t=abc --auth-token T --ct0 C --
 exit 0
 {"ok":true,"verb":"read","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/TweetDetail/TweetDetail","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"focalTweetId\":\"99887766\",\"includePromotedContent\":false,\"withBirdwatchNotes\":false,\"withVoice\":false},\"queryId\":\"TweetDetail\",\"features\":{\"longform_notetweets_consumption_enabled\":true,\"responsive_web_twitter_article_tweet_consumption_enabled\":true,\"longform_notetweets_rich_text_read_enabled\":true,\"longform_notetweets_inline_media_enabled\":true,\"articles_preview_enabled\":true},\"fieldToggles\":{\"withArticleRichContentState\":true,\"withArticlePlainText\":true}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/TweetDetail/TweetDetail","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"focalTweetId\":\"99887766\",\"includePromotedContent\":false,\"withBirdwatchNotes\":false,\"withVoice\":false},\"queryId\":\"TweetDetail\",\"features\":{\"longform_notetweets_consumption_enabled\":true,\"responsive_web_twitter_article_tweet_consumption_enabled\":true,\"longform_notetweets_rich_text_read_enabled\":true,\"longform_notetweets_inline_media_enabled\":true,\"articles_preview_enabled\":true},\"fieldToggles\":{\"withArticleRichContentState\":true,\"withArticlePlainText\":true}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   48. a share url still yields its id
 
 ## 49. mentions asks X with the count it was given
@@ -379,6 +457,8 @@ $ bird mentions --count 3 --auth-token T --ct0 C --web-bearer BEARER --gql-featu
 exit 0
 {"ok":true,"verb":"mentions","status":0,"data":{"method":"GET","url":"https://x.com/i/api/2/notifications/mentions.json?count=3","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/2/notifications/mentions.json?count=3","-X","GET","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   49. mentions asks X with the count it was given
 
 ## 50. ...as a GET
@@ -386,6 +466,8 @@ $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --d
 exit 0
 {"ok":true,"verb":"mentions","status":0,"data":{"method":"GET","url":"https://x.com/i/api/2/notifications/mentions.json?count=10","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/2/notifications/mentions.json?count=10","-X","GET","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   50. ...as a GET
 
 ## 51. mentions without a session is refused
@@ -395,6 +477,7 @@ exit 3
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   51. mentions without a session is refused
 
 ## 52. bookmarks asks the operation its setting names
@@ -402,6 +485,8 @@ $ bird bookmarks --op-bookmarks opBM --auth-token T --ct0 C --web-bearer BEARER 
 exit 0
 {"ok":true,"verb":"bookmarks","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/opBM/Bookmarks","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"count\":10,\"includePromotedContent\":false,\"latestControlAvailable\":true,\"requestContext\":\"launch\"},\"queryId\":\"opBM\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/opBM/Bookmarks","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"count\":10,\"includePromotedContent\":false,\"latestControlAvailable\":true,\"requestContext\":\"launch\"},\"queryId\":\"opBM\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   52. bookmarks asks the operation its setting names
 
 ## 53. ...and the recorded one when nothing sets one
@@ -409,6 +494,8 @@ $ bird bookmarks --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --
 exit 0
 {"ok":true,"verb":"bookmarks","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/XD0ViOeSOW4YoeNTGjVaYw/Bookmarks","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"count\":10,\"includePromotedContent\":false,\"latestControlAvailable\":true,\"requestContext\":\"launch\"},\"queryId\":\"XD0ViOeSOW4YoeNTGjVaYw\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/XD0ViOeSOW4YoeNTGjVaYw/Bookmarks","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"count\":10,\"includePromotedContent\":false,\"latestControlAvailable\":true,\"requestContext\":\"launch\"},\"queryId\":\"XD0ViOeSOW4YoeNTGjVaYw\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   53. ...and the recorded one when nothing sets one
 
 ## 54. ...with the count it was given
@@ -416,6 +503,8 @@ $ bird bookmarks --count 3 --auth-token T --ct0 C --web-bearer BEARER --gql-feat
 exit 0
 {"ok":true,"verb":"bookmarks","status":0,"data":{"method":"POST","url":"https://x.com/i/api/graphql/XD0ViOeSOW4YoeNTGjVaYw/Bookmarks","headers":[{"name":"authorization","value":"Bearer BEARER"},{"name":"x-csrf-token","value":"C"},{"name":"cookie","value":"auth_token=T; ct0=C"},{"name":"content-type","value":"application/json"},{"name":"x-twitter-active-user","value":"yes"},{"name":"x-twitter-auth-type","value":"OAuth2Session"}],"body":"{\"variables\":{\"count\":3,\"includePromotedContent\":false,\"latestControlAvailable\":true,\"requestContext\":\"launch\"},\"queryId\":\"XD0ViOeSOW4YoeNTGjVaYw\",\"features\":{}}","parts":[],"timeout_ms":15000,"curl":["curl","-sS","https://x.com/i/api/graphql/XD0ViOeSOW4YoeNTGjVaYw/Bookmarks","-X","POST","-H","authorization: Bearer BEARER","-H","x-csrf-token: C","-H","cookie: auth_token=T; ct0=C","-H","content-type: application/json","-H","x-twitter-active-user: yes","-H","x-twitter-auth-type: OAuth2Session","--max-time","15","-d","{\"variables\":{\"count\":3,\"includePromotedContent\":false,\"latestControlAvailable\":true,\"requestContext\":\"launch\"},\"queryId\":\"XD0ViOeSOW4YoeNTGjVaYw\",\"features\":{}}","--write-out","%{http_code}"]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   54. ...with the count it was given
 
 ## 55. a bookmarks timeline folds to its tweets
@@ -423,6 +512,8 @@ $ bird bookmarks --fixture <work>/bookmarks.json --json
 exit 0
 {"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":["asked for 10 bookmarks, X had 1"]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   55. a bookmarks timeline folds to its tweets
 
 ## 56. login with no session says which flags fix it
@@ -432,6 +523,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   56. login with no session says which flags fix it
 
 ## 57. a browser this build cannot read is refused by name
@@ -441,6 +533,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   57. a browser this build cannot read is refused by name
 
 ## 58. firefox without a database names the flag it needs
@@ -450,6 +543,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   58. firefox without a database names the flag it needs
 
 ## 59. a settings cache that is not a settings file is refused by name
@@ -459,6 +553,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   59. a settings cache that is not a settings file is refused by name
 
 ## 60. a settings cache that is not there is not an error
@@ -466,6 +561,8 @@ $ bird check --settings-path <work>/absent-cache.json --json
 exit 0
 {"ok":true,"verb":"check","status":0,"data":{"engine":"graphql","credentials":"none","operations":{"create_tweet":"CreateTweet","tweet_detail":"TweetDetail","search":"SearchTimeline","bookmarks":"XD0ViOeSOW4YoeNTGjVaYw","viewer":"Viewer"},"timeout_ms":15000},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   60. a settings cache that is not there is not an error
 
 ## 61. login does not read the cache it is about to rewrite
@@ -475,6 +572,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   61. login does not read the cache it is about to rewrite
 
 ## 62. a config file refuses the text of a post
@@ -484,6 +582,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   62. a config file refuses the text of a post
 
 ## 63. a config file cannot smuggle in a number that is not one
@@ -493,6 +592,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   63. a config file cannot smuggle in a number that is not one
 
 ## 64. a config file refuses a key the flag table does not know
@@ -502,6 +602,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   64. a config file refuses a key the flag table does not know
 
 ## 65. a real 200 arrives with its status and its payload
@@ -509,6 +610,8 @@ $ bird whoami --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-b
 exit 0
 {"ok":true,"verb":"whoami","status":200,"data":{"profile":{"id":"1","handle":"","name":"","verified":false,"avatar":null,"bio":null,"followers":null,"following":null,"tweets":null,"location":null,"created_at":null}},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   65. a real 200 arrives with its status and its payload
 
 ## 66. the request is not sent twice, to a host named curl
@@ -516,6 +619,8 @@ $ bird whoami --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistics-b
 exit 0
 {"ok":true,"verb":"whoami","status":200,"data":{"profile":{"id":"1","handle":"","name":"","verified":false,"avatar":null,"bio":null,"followers":null,"following":null,"tweets":null,"location":null,"created_at":null}},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   66. the request is not sent twice, to a host named curl
 
 ## 67. a real 404 is not_found, carrying its own status
@@ -525,6 +630,7 @@ exit 4
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   67. a real 404 is not_found, carrying its own status
 
 ## 68. a real 429 keeps the exact body, nothing glued to it
@@ -534,6 +640,7 @@ exit 5
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   68. a real 429 keeps the exact body, nothing glued to it
 
 ## 69. a real 500 is upstream
@@ -543,6 +650,7 @@ exit 7
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   69. a real 500 is upstream
 
 ## 70. bookmarks folds the timeline its operation names
@@ -550,6 +658,8 @@ $ bird bookmarks --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistic
 exit 0
 {"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6060","text":"a saved tweet","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":["asked for 10 bookmarks, X had 1"]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   70. bookmarks folds the timeline its operation names
 
 ## 71. a bookmark read follows the cursor to the next page
@@ -557,6 +667,8 @@ $ bird bookmarks --engine sweetistics --sweetistics-api-key LIVEKEY --sweetistic
 exit 0
 {"ok":true,"verb":"bookmarks","status":200,"data":{"tweets":[{"id":"6061","text":"the first saved","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null},{"id":"6062","text":"the second saved","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null},{"id":"6063","text":"the third saved","lang":null,"created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   71. a bookmark read follows the cursor to the next page
 
 ## 72. a failure with no request behind it reports no status
@@ -566,6 +678,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   72. a failure with no request behind it reports no status
 
 ## 73. a body far bigger than a tweet still parses and prints
@@ -573,6 +686,8 @@ $ bird read 12345 --engine sweetistics --sweetistics-api-key LIVEKEY --sweetisti
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   73. a body far bigger than a tweet still parses and prints
 
 ## 74. the server received the variables, one request each
@@ -586,6 +701,7 @@ exit 4
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   75. a 404 is not retryable
 
 ## 76. a 429 is retryable, and the envelope says so
@@ -595,6 +711,7 @@ exit 5
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   76. a 429 is retryable, and the envelope says so
 
 ## 77. a post that timed out says the answer was lost
@@ -604,6 +721,7 @@ exit 6
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   77. a post that timed out says the answer was lost
 
 ## 78. ...and is not retryable
@@ -613,6 +731,7 @@ exit 6
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   78. ...and is not retryable
 
 ## 79. a read that timed out stays retryable
@@ -622,6 +741,7 @@ exit 6
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   79. a read that timed out stays retryable
 
 ## 80. a media write uploads, sets the alt, then posts
@@ -629,6 +749,8 @@ $ bird tweet --text media live --media <work>/shot.png --alt a description --aut
 exit 0
 {"ok":true,"verb":"tweet","status":200,"data":{"data":{"create_tweet":{"tweet_results":{"result":{"rest_id":"5150","legacy":{"full_text":"media live"}}}}}},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   80. a media write uploads, sets the alt, then posts
 
 ## 81. mentions reads the timeline its setting names
@@ -636,6 +758,8 @@ $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --g
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   81. mentions reads the timeline its setting names
 
 ## 82. the server received the upload, the alt and the post, in that order
@@ -649,6 +773,8 @@ $ bird read 12345 --auth-token T --ct0 C --web-bearer BEARER --gql-features {} -
 exit 0
 {"ok":true,"verb":"read","status":200,"data":{"tweets":[{"id":"12345","text":"# the head\n\nthe body","lang":"zxx","created_at":null,"author":null,"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":"a live article"}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   83. an article answers with the article, not its t.co stub
 
 ## 84. a read asked for the article body on the wire
@@ -662,6 +788,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   85. an attachment that is not there is a usage error
 
 ## 86. ...and it is not retryable
@@ -671,6 +798,7 @@ exit 2
 
 stderr:
 
+bend 2.0.37 is available: run bend update
 ok   86. ...and it is not retryable
 
 ## 87. the cookie names a shell already exports are read
@@ -678,6 +806,8 @@ $ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 bird mentions --web-bearer B
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   87. the cookie names a shell already exports are read
 
 ## 88. ...and BIRD_ wins when both spellings are set
@@ -685,6 +815,8 @@ $ TWITTER_AUTH_TOKEN=ALIAS-AT TWITTER_CT0=ALIAS-CT0 BIRD_AUTH_TOKEN=BIRD-AT BIRD
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   88. ...and BIRD_ wins when both spellings are set
 
 ## 89. the server received the credential each case asked for
@@ -697,6 +829,8 @@ $ bird mentions --auth-token T --ct0 C --web-bearer BEARER --gql-features {} --g
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   90. a mentions answer carries the author from the map beside it
 
 ## 91. login imports the session and reads the bundle for its constants
@@ -704,6 +838,8 @@ $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   91. login imports the session and reads the bundle for its constants
 
 ## 92. ...and reports the verb it ran
@@ -711,6 +847,8 @@ $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   92. ...and reports the verb it ran
 
 ## 93. ...and writes the bookmarks operation the bundle carried
@@ -718,6 +856,8 @@ $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   93. ...and writes the bookmarks operation the bundle carried
 
 ## 94. login does not print the cookies it imported
@@ -725,6 +865,8 @@ $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   94. login does not print the cookies it imported
 
 ## 95. login writes the default settings path, making its directory
@@ -732,6 +874,8 @@ $ bird login --cookie-source chrome --cookie-db <work>/Cookies --chrome-key test
 exit 0
 {"ok":true,"verb":"login","status":0,"data":{"settings_path":"<work>/home/.config/bird/settings.json","cookies":"imported from chrome","web_bearer":"AAAAAAAAAAAAAAAAAAAA_LIVE_BEARER_TAIL","op_viewer":"LIVEVIEWERID1","op_tweet_detail":"LIVEDETAILID2","op_search":"LIVESEARCHID3","op_bookmarks":"LIVEBOOKMARKS5","op_create_tweet":"LIVECREATEID4"},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   95. login writes the default settings path, making its directory
 
 ## 96. a run with no credentials reads the cache login wrote
@@ -739,6 +883,8 @@ $ bird mentions --settings-path <work>/settings.json --mentions-url http://127.0
 exit 0
 {"ok":true,"verb":"mentions","status":200,"data":{"tweets":[{"id":"11","text":"@bird hello","lang":null,"created_at":"Sat Oct 11 00:00:00 +0000 2026","author":{"id":"55","handle":"bird_mentions_probe","name":"Bird Mentions Probe","verified":false,"avatar":null},"metrics":{"replies":null,"retweets":null,"likes":null,"quotes":null,"bookmarks":null,"views":null},"media":[],"urls":[],"quoted":null,"in_reply_to":null,"article_title":null}]},"notes":[]}
 
+stderr:
+bend 2.0.37 is available: run bend update
 ok   96. a run with no credentials reads the cache login wrote
 
 ## 97. the server received the session the cache held
@@ -753,6 +899,7 @@ exit 0
 ^Da fixture tweet
 id 12345
 
+bend 2.0.37 is available: run bend update
 ok   98. on a terminal a read is the tweet, not the envelope
 
 ## 99. a terminal says so when the answer holds no tweet
@@ -760,6 +907,7 @@ $ TERM=xterm bird read 999 --fixture <fixture>
 exit 0
 ^Dno tweets
 
+bend 2.0.37 is available: run bend update
 ok   99. a terminal says so when the answer holds no tweet
 
 ## 100. every flag the guides name is one the parser accepts

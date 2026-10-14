@@ -123,8 +123,83 @@ def roundtrip(p: J.Parsed) -> IO(String):
     case J.ParsedOk{value}:
       IO.pure(String, J.show(value))
 
+# Regression: escape once recursed per character and overflowed the machine stack
+# near 100 KB. Only a long input exposes that, so the test uses 200 KB.
+def repeated(n: Nat, +acc: String) -> String:
+  match n:
+    case 0n:
+      acc
+    case 1n+p:
+      repeated(p, SCon{'a', acc})
+
+def length_of(s: String, acc: Nat) -> Nat:
+  match s:
+    case SNil{}:
+      acc
+    case SCon{h, t}:
+      length_of(t, 1n+acc)
+
+def check_long_escape() -> IO(Unit):
+  do IO<Unit>:
+    ok("escapes a 200 KB string without overflowing the stack",
+      Nat.is_eq(length_of(J.escape(repeated(200000n, SNil{})), 0n), 200000n))
+
+# Regression: arr_of once recursed per element, so a long array overflowed the
+# stack when the parser closed it. 100,000 elements is well past the limit.
+def digits_csv(n: Nat, +acc: String) -> String:
+  match n:
+    case 0n:
+      acc
+    case 1n+p:
+      digits_csv(p, SCon{'1', SCon{',', acc}})
+
+def check_long_array() -> IO(Unit):
+  do IO<Unit>:
+    body : J.Json <- body_of(J.parse("[" ++ digits_csv(100000n, SNil{}) ++ "1]"))
+    ok("parses a 100,000 element array without overflowing the stack",
+      U32.is_eq(J.count(body), 100001))
+    again : J.Json <- body_of(J.parse("[" ++ digits_csv(100000n, SNil{}) ++ "1]"))
+    ok("reads the last element of a 100,000 element array",
+      String.eq(J.show(J.at_index(again, 100000n)), "1"))
+
+# Regression: fields() once recursed per key, so a 100,000-key object overflowed.
+# Keys repeat on purpose: the check is about length and order, not key uniqueness.
+def keys_csv_obj(n: Nat, +acc: String) -> String:
+  match n:
+    case 0n:
+      acc
+    case 1n+p:
+      keys_csv_obj(p, "\"k\":1," ++ acc)
+
+def field_count(xs: List<&2, J.JField>, acc: U32) -> U32:
+  match xs:
+    case Nil{}:
+      acc
+    case +h <> t:
+      field_count(t, U32.add(1, acc))
+
+def last_key(xs: List<&2, J.JField>,+last: String) -> String:
+  match xs:
+    case Nil{}:
+      last
+    case +h <> t:
+      match h:
+        case J.JField{key, value}:
+          last_key(t, key)
+
+def check_long_object() -> IO(Unit):
+  do IO<Unit>:
+    obj : J.Json <- body_of(J.parse("{" ++ keys_csv_obj(100000n, SNil{}) ++ "\"z\":1}"))
+    ok("lists all 100,001 fields of a large object",
+      U32.is_eq(field_count(J.fields(obj), 0), 100001))
+    again : J.Json <- body_of(J.parse("{" ++ keys_csv_obj(100000n, SNil{}) ++ "\"z\":1}"))
+    ok("keeps the last field last in a large object",
+      String.eq(last_key(J.fields(again), ""), "z"))
+
 def main() -> IO(Unit):
   do IO<Unit>:
+    check_long_array()
+    check_long_object()
     +parsed : J.Parsed = J.parse(doc())
     text : String <- roundtrip(parsed)
     ok("round trip is byte identical", String.eq(text, doc()))
@@ -132,3 +207,4 @@ def main() -> IO(Unit):
     check_fields(body)
     check_errors()
     check_pretty()
+    check_long_escape()

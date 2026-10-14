@@ -127,12 +127,25 @@ def escape_code(+code: U32, c: Char) -> String:
 def escape_ch(+c: Char) -> String:
   escape_code(Char.to_u32(c), c)
 
-def escape(s: String) -> String:
+# Tail-recursive: a 200 KB string overflowed the stack when escape recursed per
+# character. Reverse first, then prepend each escaped piece, so the output reads
+# left to right again without a frame per character.
+def reverse_str(s: String,+acc: String) -> String:
   match s:
     case SNil{}:
-      SNil{}
+      acc
     case SCon{h, t}:
-      escape_ch(h) ++ escape(t)
+      reverse_str(t, SCon{h, acc})
+
+def escape_prepend(s: String,+acc: String) -> String:
+  match s:
+    case SNil{}:
+      acc
+    case SCon{h, t}:
+      escape_prepend(t, escape_ch(h) ++ acc)
+
+def escape(s: String) -> String:
+  escape_prepend(reverse_str(s, SNil{}), SNil{})
 
 def show_str(s: String) -> String:
   "\"" ++ escape(s) ++ "\""
@@ -380,6 +393,13 @@ def obj_acc(fs: List<&2, JField>,+acc: Json) -> Json:
     case +f <> t:
       obj_acc(t, obj_push(f, acc))
 
+def arr_acc(newest_first: List<&2, Json>,+acc: Json) -> Json:
+  match newest_first:
+    case Nil{}:
+      acc
+    case +h <> t:
+      arr_acc(t, JsonArr{h, acc})
+
 def obj_of(fs: List<&2, JField>) -> Json:
   obj_acc(List.reverse(&2, JField, fs), JsonObjEnd{})
 
@@ -562,24 +582,44 @@ def is_arr_end(j: Json) -> Bool:
     case _:
       False{}
 
-def items(j: Json) -> List<&2, Json>:
+# Same reverse-then-flip shape as `fields`, so a large array does not use one
+# frame per element. The round-trip law reads it back through `reverse` lemmas.
+def items_rev(j: Json,+acc: List<&2, Json>) -> List<&2, Json>:
   match j:
     case JsonArr{head, tail}:
-      head <> items(tail)
+      items_rev(tail, head <> acc)
     case _:
-      Nil{}
+      acc
+
+def items(j: Json) -> List<&2, Json>:
+  List.reverse(&2, Json, items_rev(j, Nil{}))
 
 # Array element by position, as JSON `null` when out of range, so a caller can
-# read a timeline slot without unwrapping a Maybe.
+# read a timeline slot without unwrapping a Maybe. Walks the array in place:
+# going through `items` rebuilt the whole list on every lookup, so a loop over
+# indices was quadratic.
 def at_index(j: Json, n: Nat) -> Json:
-  or_null(List.get(&2, Json, items(j), n))
+  match j:
+    case JsonArr{head, tail}:
+      match n:
+        case 0n:
+          head
+        case 1n+p:
+          at_index(tail, p)
+    case _:
+      JsonNull{}
 
-def fields(j: Json) -> List<&2, JField>:
+# Accumulates in reverse, then flips once, so a large object does not use one
+# stack frame per key. A 100,000-key object overflowed the stack before this.
+def fields_rev(j: Json,+acc: List<&2, JField>) -> List<&2, JField>:
   match j:
     case JsonObj{key, value, tail}:
-      JField{key, value} <> fields(tail)
+      fields_rev(tail, JField{key, value} <> acc)
     case _:
-      Nil{}
+      acc
+
+def fields(j: Json) -> List<&2, JField>:
+  List.reverse(&2, JField, fields_rev(j, Nil{}))
 
 # The keys alone, for callers that only need to check names: a walk over strings
 # needs no destructuring step, so it stays one self-recursive def.
@@ -590,12 +630,15 @@ def keys(j: Json) -> List<&2, String>:
     case _:
       Nil{}
 
-def count(j: Json) -> U32:
+def count_acc(j: Json,+acc: U32) -> U32:
   match j:
     case JsonArr{head, tail}:
-      U32.add(1, count(tail))
+      count_acc(tail, U32.add(1, acc))
     case _:
-      0
+      acc
+
+def count(j: Json) -> U32:
+  count_acc(j, 0)
 
 def present(j: Json, key: String) -> Bool:
   any_got(get(j, key))
@@ -849,7 +892,7 @@ def close_arr(stack: List<&2, Frame>, value: Maybe<&2, Json>,+err: String) -> PS
     case Nil{}:
       fail("unexpected ]", err)
     case FrameArr{items} <> rest:
-      attached(attach(arr_of(List.reverse(&2, Json, items)), rest), value, err)
+      attached(attach(arr_acc(items, JsonArrEnd{}), rest), value, err)
     case _:
       fail("] closes an object", err)
 

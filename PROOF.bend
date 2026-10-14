@@ -59,13 +59,60 @@ def Laws.agent_output(tty, asked):
 # nothing back. Cons: `arr_of` prepends one node, so the goal is the induction
 # hypothesis under the same head. The recursion is the hypothesis; the rewrite
 # records that reading the tail back gives the tail.
-def Laws.array_items_round_trip(xs):
+# `items` reverses an accumulator, so the proof needs reverse lemmas over Json
+# lists. Each lemma is stated with the side the rewrite needs as its right side.
+def Lem.app_assoc(+xs: List<&2, J.Json>, +ys: List<&2, J.Json>, +zs: List<&2, J.Json>) -> {List.append(&2, J.Json, xs, List.append(&2, J.Json, ys, zs)) == List.append(&2, J.Json, List.append(&2, J.Json, xs, ys), zs) : List<&2, J.Json>}:
   match xs:
     case Nil{}:
       {==}
     case +h <> t:
-      %Laws.array_items_round_trip(t) : {J.items(J.arr_of(h <> t)) == h <> _ : List<&2, J.Json>}
+      %Lem.app_assoc(t, ys, zs) : {List.append(&2, J.Json, h <> t, List.append(&2, J.Json, ys, zs)) == h <> _ : List<&2, J.Json>}
       {==}
+
+def Lem.rgo_app(+xs: List<&2, J.Json>, +acc: List<&2, J.Json>) -> {List.append(&2, J.Json, List.reverse.go(&2, J.Json, xs, Nil{}), acc) == List.reverse.go(&2, J.Json, xs, acc) : List<&2, J.Json>}:
+  match xs:
+    case Nil{}:
+      {==}
+    case +h <> t:
+      %Lem.rgo_app(t, h <> Nil{}) : {List.append(&2, J.Json, _, acc) == List.reverse.go(&2, J.Json, h <> t, acc) : List<&2, J.Json>}
+      %Lem.app_assoc(List.reverse.go(&2, J.Json, t, Nil{}), h <> Nil{}, acc) : {_ == List.reverse.go(&2, J.Json, h <> t, acc) : List<&2, J.Json>}
+      %Lem.rgo_app(t, h <> acc) : {List.append(&2, J.Json, List.reverse.go(&2, J.Json, t, Nil{}), h <> acc) == _ : List<&2, J.Json>}
+      {==}
+
+def Lem.rgo_append(+ys: List<&2, J.Json>, +zs: List<&2, J.Json>, +acc: List<&2, J.Json>) -> {List.reverse.go(&2, J.Json, zs, List.reverse.go(&2, J.Json, ys, acc)) == List.reverse.go(&2, J.Json, List.append(&2, J.Json, ys, zs), acc) : List<&2, J.Json>}:
+  match ys:
+    case Nil{}:
+      {==}
+    case +h <> t:
+      %Lem.rgo_append(t, zs, h <> acc) : {List.reverse.go(&2, J.Json, zs, List.reverse.go(&2, J.Json, h <> t, acc)) == _ : List<&2, J.Json>}
+      {==}
+
+def Lem.rev_rev(+xs: List<&2, J.Json>) -> {List.reverse.go(&2, J.Json, List.reverse.go(&2, J.Json, xs, Nil{}), Nil{}) == xs : List<&2, J.Json>}:
+  match xs:
+    case Nil{}:
+      {==}
+    case +h <> t:
+      %Lem.rgo_app(t, h <> Nil{}) : {List.reverse.go(&2, J.Json, _, Nil{}) == h <> t : List<&2, J.Json>}
+      %Lem.rgo_append(List.reverse.go(&2, J.Json, t, Nil{}), h <> Nil{}, Nil{}) : {_ == h <> t : List<&2, J.Json>}
+      %Lem.rev_rev(t) : {List.reverse.go(&2, J.Json, h <> Nil{}, List.reverse.go(&2, J.Json, List.reverse.go(&2, J.Json, t, Nil{}), Nil{})) == h <> _ : List<&2, J.Json>}
+      {==}
+
+# items_rev over arr_of reads the list back in reverse, the same shape as `reverse.go`.
+def Lem.rgo_arr(+xs: List<&2, J.Json>, +acc: List<&2, J.Json>) -> {List.reverse.go(&2, J.Json, xs, acc) == J.items_rev(J.arr_of(xs), acc) : List<&2, J.Json>}:
+  match xs:
+    case Nil{}:
+      {==}
+    case +h <> t:
+      %Lem.rgo_arr(t, h <> acc) : {List.reverse.go(&2, J.Json, h <> t, acc) == _ : List<&2, J.Json>}
+      {==}
+
+def Lem.array_round_trip(+xs: List<&2, J.Json>) -> {J.items(J.arr_of(xs)) == xs : List<&2, J.Json>}:
+  %Lem.rgo_arr(xs, Nil{}) : {List.reverse(&2, J.Json, _) == xs : List<&2, J.Json>}
+  %Lem.rev_rev(xs) : {List.reverse.go(&2, J.Json, List.reverse.go(&2, J.Json, xs, Nil{}), Nil{}) == _ : List<&2, J.Json>}
+  {==}
+
+def Laws.array_items_round_trip(xs):
+  Lem.array_round_trip(xs)
 
 # Every constructor named, so a verb added later fails this proof until someone
 # classifies it. The two writing verbs are covered by `needs_network`'s
